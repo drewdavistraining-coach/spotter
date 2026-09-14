@@ -1,6 +1,6 @@
 // Offline support: cache the app shell, serve it cache-first.
 // Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = 'spotter-v1';
+const VERSION = 'spotter-v2';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png',
   'js/app.js', 'js/db.js', 'js/seed.js', 'js/util.js', 'js/ui.js', 'js/progress.js', 'js/planner.js', 'js/recap.js',

@@ -1,6 +1,6 @@
 // Drill library: the pool the week planner draws from.
 import { db, uid } from '../db.js';
-import { esc, $, $$, toast } from '../util.js';
+import { esc, $, $$, toast, weekStart } from '../util.js';
 import { CATEGORIES, DEFAULT_SKILLS, LEVELS, LEVEL_SHORT, INTENSITY } from '../seed.js';
 import { page, openSheet, catDot } from '../ui.js';
 
@@ -24,13 +24,53 @@ export async function drillsView() {
       .filter(d => (!cat || d.category === cat) && (d.name.toLowerCase().includes(q) || d.skills.some(s => s.toLowerCase().includes(q))))
       .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name));
     $('[data-list]', view).innerHTML = shown.map(d => `
-      <button class="card drill-row" data-edit="${d.id}">
+      <div class="card drill-row" data-id="${d.id}">
         ${catDot(d.category)}
-        <div class="grow"><div>${esc(d.name)}</div><div class="muted small">${LEVEL_SHORT[d.level || 1]} · ${INTENSITY[d.intensity || 2]} · ${esc(d.skills.join(', '))}</div></div>
-        <span class="muted small">${esc(d.dose)}</span>
-      </button>`).join('') || '<div class="muted small">No drills match.</div>';
+        <div class="grow" data-edit>
+          <div data-name>${esc(d.name)}</div>
+          <div class="muted small">${LEVEL_SHORT[d.level || 1]} · ${INTENSITY[d.intensity || 2]} · ${esc(d.dose)}</div>
+        </div>
+        <button type="button" class="icon-btn small" data-rename aria-label="Rename ${esc(d.name)}" title="Rename">✎</button>
+      </div>`).join('') || '<div class="muted small">No drills match.</div>';
   }
   render();
+
+  // Renaming updates the library plus this week's and future plans. Past sessions keep the name they were logged with.
+  async function renameDrill(drill, name) {
+    if (!name || name === drill.name) return false;
+    drill.name = name;
+    await db.put('drills', drill);
+    const thisWeek = weekStart();
+    for (const plan of await db.all('plans')) {
+      if (plan.weekStart < thisWeek) continue;
+      const blocks = plan.days.flat().filter(b => b.drillId === drill.id);
+      if (!blocks.length) continue;
+      blocks.forEach(b => { b.name = name; });
+      await db.put('plans', plan);
+    }
+    return true;
+  }
+
+  function startRename(row) {
+    const drill = drills.find(d => d.id === row.dataset.id);
+    const nameEl = $('[data-name]', row);
+    nameEl.innerHTML = `<input class="rename" value="${esc(drill.name)}" enterkeyhint="done" aria-label="Drill name">`;
+    const input = $('input', nameEl);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = async save => {
+      if (done) return;
+      done = true;
+      if (save && await renameDrill(drill, input.value.trim())) toast('Renamed');
+      render();
+    };
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
 
   $('[data-q]', view).addEventListener('input', render);
   $('[data-cats]', view).addEventListener('click', e => {
@@ -41,8 +81,10 @@ export async function drillsView() {
     render();
   });
   $('[data-list]', view).addEventListener('click', e => {
-    const b = e.target.closest('[data-edit]');
-    if (b) edit(drills.find(d => d.id === b.dataset.edit));
+    const row = e.target.closest('[data-id]');
+    if (!row || e.target.closest('input')) return;
+    if (e.target.closest('[data-rename]')) startRename(row);
+    else if (e.target.closest('[data-edit]')) edit(drills.find(d => d.id === row.dataset.id));
   });
   $('[data-new]').addEventListener('click', () => edit(null));
 
@@ -72,6 +114,7 @@ export async function drillsView() {
         $('[data-form]', el).addEventListener('submit', async e => {
           e.preventDefault();
           const f = new FormData(e.target);
+          if (drill) await renameDrill(drill, f.get('name').trim());
           Object.assign(d, { name: f.get('name').trim(), category: f.get('category'), dose: f.get('dose').trim(), level: Number(f.get('level')), intensity: Number(f.get('intensity')), skills: f.getAll('skills'), notes: f.get('notes').trim() });
           await db.put('drills', d);
           if (!drill) drills.push(d);

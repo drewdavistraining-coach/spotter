@@ -6,8 +6,8 @@ export const CONDITIONING = ['Strength', 'Conditioning'];
 export const DISCIPLINES = [...COMBAT, ...CONDITIONING];
 export const CATEGORIES = ['Warm-up', ...DISCIPLINES, 'Mobility'];
 
-export const LEVELS = ['Off', 'Foundations', 'Intermediate', 'Advanced'];
-export const LEVEL_SHORT = ['Off', 'Fnd', 'Int', 'Adv'];
+export const LEVELS = ['Off', 'Beginner', 'Intermediate', 'Advanced'];
+export const LEVEL_SHORT = ['Off', 'Beg', 'Int', 'Adv'];
 export const INTENSITY = ['', 'Technical', 'Drilling', 'Live'];
 
 export const DEFAULT_SKILLS = ['Hands', 'Kicks & knees', 'Defense', 'Clinch', 'Takedowns', 'Ground game', 'Submissions', 'Cardio', 'Strength', 'Mobility'];
@@ -23,6 +23,7 @@ export const DISCIPLINE_SKILLS = {
   'Conditioning': ['Cardio'],
 };
 
+// Starting list only; Drew's own list is stored in meta 'sessionTypes' (see sessionTypes() in db.js).
 export const SESSION_TYPES = ['Private', 'Pad work', 'Sparring', 'Grappling', 'Strength & conditioning', 'Group class', 'Assessment'];
 
 // [name, category, level 1-3, intensity 1 technical / 2 drilling / 3 live, skills, default dose]

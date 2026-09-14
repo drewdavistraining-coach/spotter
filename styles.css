@@ -125,6 +125,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 }
 .chip input:checked + span, .chip-btn.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); border-color: var(--accent); color: var(--text); }
 .chip-btn.strong { color: var(--text); }
+.list-editor { display: flex; flex-direction: column; gap: 8px; }
+.chip-on {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px 3px 3px 12px; border-radius: 999px; font-size: 13px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); border: 1px solid var(--accent); color: var(--text);
+}
+.chip-x { width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.chip-x:hover, .chip-x:active { background: rgba(255, 255, 255, .1); color: var(--text); }
+.field-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.drill-row .grow { cursor: pointer; }
+.rename { font-size: 15px; padding: 6px 8px; }
 .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .tag.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }

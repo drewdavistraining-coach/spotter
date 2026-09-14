@@ -41,6 +41,11 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   - `slotsFor()` shapes each training day.
   - `PHASES` defines the 4-week cycle.
   - The scoring inside `autoBuildWeek()` decides which drill wins.
+- Editable name lists use `listEditor()` in `js/ui.js`:
+  - a client's rating categories are stored as `client.skills`;
+  - session types are stored as meta `sessionTypes`, read through `sessionTypes()` in `db.js`.
+- Renaming a drill (`renameDrill()` in `js/views/drills.js`) also renames it in this week's and future plans.
+  Past plans and logged sessions keep the old name as history.
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his
   device's database, so changing `seed.js` doesn't change his existing drills.
 

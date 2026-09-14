@@ -37,7 +37,7 @@ the next time the app is opened (sometimes it takes a second open).
 The problem it solves: long-term clients drift into whatever Drew is training himself, and deciding
 each week's plan is guesswork. The engine does three things:
 
-1. **Levels per discipline.** Each client gets Off / Foundations / Intermediate / Advanced in Boxing,
+1. **Levels per discipline.** Each client gets Off / Beginner / Intermediate / Advanced in Boxing,
    Muay Thai, Jiu Jitsu, Wrestling, MMA, Strength and Conditioning. Every drill has a level, and the
    planner never picks a drill above the client's level in that discipline.
 2. **A repeating 4-week block:** **Learn → Build → Apply → Test & recover.**

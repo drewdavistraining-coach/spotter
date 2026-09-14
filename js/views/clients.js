@@ -4,7 +4,7 @@ import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration,
 import { DISCIPLINES, DEFAULT_SKILLS, LEVELS, LEVEL_SHORT } from '../seed.js';
 import { programFor, cycleInfo, levelUpSuggestions } from '../planner.js';
 import { byDate, inRange, focusAreas, skillSummary, weeklyCounts } from '../progress.js';
-import { page, sparkline, trendArrow, emptyState } from '../ui.js';
+import { page, sparkline, trendArrow, emptyState, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
 
 export async function clientsView() {
@@ -24,7 +24,7 @@ export async function clientsView() {
     title: 'Clients',
     action: '<a class="btn primary small" href="#/clients/new">+ Client</a>',
     body: `
-      ${staleBackup ? `<a class="banner" href="#/settings">💾 ${lastBackup ? `Last backup ${daysAgo(lastBackup.slice(0, 10))}` : 'No backup yet'} — tap to back up your data</a>` : ''}
+      ${staleBackup ? `<a class="banner" href="#/settings">💾 ${lastBackup ? `Last backup ${daysAgo(isoDate(new Date(lastBackup)))}` : 'No backup yet'} — tap to back up your data</a>` : ''}
       ${clients.length ? `<input class="search" type="search" placeholder="Search clients" data-search>` : ''}
       <div class="list" data-list>
         ${rows.length ? rows.map(({ c, last, thisWeek, focus }) => `
@@ -46,11 +46,16 @@ export async function clientsView() {
   });
 }
 
+// Categories worth suggesting: the defaults plus anything used for any client.
+export async function skillSuggestions() {
+  const clients = await db.all('clients');
+  return [...new Set([...DEFAULT_SKILLS, ...clients.flatMap(c => c.skills || [])])];
+}
+
 export async function clientFormView(id) {
   const existing = id ? await db.get('clients', id) : null;
   if (id && !existing) return (location.hash = '#/');
   const c = existing || { name: '', email: '', phone: '', goal: '', disciplines: [], skills: [...DEFAULT_SKILLS], notes: '', startDate: isoDate() };
-  const allSkills = [...new Set([...DEFAULT_SKILLS, ...c.skills])];
   const program = programFor(c);
   const levels = { ...program.levels };
 
@@ -73,18 +78,16 @@ export async function clientFormView(id) {
               <div class="seg levels">${LEVEL_SHORT.map((label, n) => `<button type="button" data-level="${n}" title="${LEVELS[n]}" class="${(program.levels[d] || 0) === n ? 'on' : ''}">${label}</button>`).join('')}</div>
             </div>`).join('')}
           </div>
-          <span class="muted small">Foundations = new to it · Intermediate = solid base · Advanced = years in. The planner only picks drills at or below these levels.</span>
+          <span class="muted small">Beginner = new to it · Intermediate = solid base · Advanced = years in. The planner only picks drills at or below these levels.</span>
         </fieldset>
         <fieldset class="field"><span>Usual training days</span>
           <div class="chips">${DAY_NAMES.map((d, i) => `<label class="chip"><input type="checkbox" name="days" value="${i}" ${program.days.includes(i) ? 'checked' : ''}><span>${d}</span></label>`).join('')}</div>
         </fieldset>
         <label class="field"><span>4-week cycle started</span><input name="programStart" type="date" value="${esc(program.start)}">
           <span class="muted small">Week 1 of each block is “Learn”. Change this to line the cycle up with where they really are.</span></label>
-        <fieldset class="field"><span>Skills to rate each session</span>
-          <div class="chips" data-skills>${allSkills.map(s => `
-            <label class="chip"><input type="checkbox" name="skills" value="${esc(s)}" ${c.skills.includes(s) ? 'checked' : ''}><span>${esc(s)}</span></label>`).join('')}
-          </div>
-          <div class="row gap"><input data-new-skill placeholder="Add a skill (e.g. Clinch)"><button type="button" class="btn ghost" data-add-skill>Add</button></div>
+        <fieldset class="field"><span>Rating categories</span>
+          <span class="muted small">What you rate 1–5 each session. Only keep what this client actually trains.</span>
+          <div class="list-editor" data-skills></div>
         </fieldset>
         <label class="field"><span>Background notes</span><textarea name="notes" rows="3" placeholder="Injuries, experience, schedule…">${esc(c.notes)}</textarea></label>
         <button class="btn primary block" type="submit">${existing ? 'Save changes' : 'Create client'}</button>
@@ -100,13 +103,11 @@ export async function clientFormView(id) {
     $$('[data-level]', row).forEach(b => b.classList.toggle('on', b === btn));
   });
 
-  $('[data-add-skill]', view).addEventListener('click', () => {
-    const input = $('[data-new-skill]', view);
-    const name = input.value.trim();
-    if (!name) return;
-    $('[data-skills]', view).insertAdjacentHTML('beforeend',
-      `<label class="chip"><input type="checkbox" name="skills" value="${esc(name)}" checked><span>${esc(name)}</span></label>`);
-    input.value = '';
+  const skillsEditor = listEditor($('[data-skills]', view), {
+    items: c.skills,
+    suggestions: await skillSuggestions(),
+    placeholder: 'New category (e.g. Footwork)',
+    emptyText: 'No categories — sessions for this client won’t have ratings.',
   });
 
   $('[data-form]', view).addEventListener('submit', async e => {
@@ -127,7 +128,7 @@ export async function clientFormView(id) {
         days: f.getAll('days').map(Number),
         start: weekStart(f.get('programStart') || isoDate()),
       },
-      skills: f.getAll('skills'),
+      skills: skillsEditor.get(),
       notes: f.get('notes').trim(),
     };
     await db.put('clients', saved);

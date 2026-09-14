@@ -1,16 +1,17 @@
 // Log / edit a training session: drills done, skill ratings, notes, attached memos.
-import { db, uid } from '../db.js';
+import { db, uid, sessionTypes } from '../db.js';
 import { esc, $, $$, isoDate, weekStart, parseDate, toast } from '../util.js';
-import { SESSION_TYPES, CATEGORIES } from '../seed.js';
-import { page, catDot } from '../ui.js';
+import { CATEGORIES } from '../seed.js';
+import { page, catDot, openSheet, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
-import { memoCard, bindMemoCards } from './clients.js';
+import { memoCard, bindMemoCards, skillSuggestions } from './clients.js';
 
 export async function sessionFormView(clientId, sessionId) {
   const client = await db.get('clients', clientId);
   if (!client) return (location.hash = '#/');
   const existing = sessionId ? await db.get('sessions', sessionId) : null;
-  const s = existing || { id: uid(), clientId, date: isoDate(), type: SESSION_TYPES[0], duration: 60, drills: [], ratings: {}, wentWell: '', workOn: '', privateNotes: '' };
+  let types = await sessionTypes();
+  const s = existing || { id: uid(), clientId, date: isoDate(), type: types[0] || '', duration: 60, drills: [], ratings: {}, wentWell: '', workOn: '', privateNotes: '' };
   const drills = (await db.all('drills')).sort((a, b) => a.name.localeCompare(b.name));
   const memos = existing ? (await db.byClient('memos', clientId)).filter(m => m.sessionId === s.id) : [];
   let saved = Boolean(existing);
@@ -23,8 +24,13 @@ export async function sessionFormView(clientId, sessionId) {
       <form class="stack" data-form>
         <div class="grid-3">
           <label class="field"><span>Date</span><input type="date" name="date" value="${esc(s.date)}" required></label>
-          <label class="field"><span>Type</span><select name="type">${[...new Set([...SESSION_TYPES, s.type])].map(t => `<option ${t === s.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+          <label class="field"><span>Type</span><select name="type" data-type></select></label>
           <label class="field"><span>Minutes</span><input type="number" name="duration" min="0" step="5" value="${esc(s.duration)}"></label>
+        </div>
+        <div class="row gap" data-new-type hidden>
+          <input class="grow" placeholder="New session type (e.g. Fight camp)" enterkeyhint="done">
+          <button type="button" class="btn primary" data-save-type>Add</button>
+          <button type="button" class="btn ghost" data-cancel-type>Cancel</button>
         </div>
 
         <fieldset class="field"><span>Drills</span>
@@ -40,12 +46,10 @@ export async function sessionFormView(clientId, sessionId) {
           <div class="row gap"><input data-custom placeholder="Or type a drill" class="grow"><button type="button" class="btn ghost" data-add-custom>Add</button></div>
         </fieldset>
 
-        <fieldset class="field"><span>Ratings <em class="muted">(1 = needs lots of work, 5 = sharp)</em></span>
-          ${client.skills.length ? client.skills.map(skill => `
-            <div class="rating-row" data-skill="${esc(skill)}">
-              <span class="grow">${esc(skill)}</span>
-              <div class="seg">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${s.ratings[skill] === n ? 'on' : ''}">${n}</button>`).join('')}</div>
-            </div>`).join('') : '<div class="muted small">No skills set for this client — add some in their profile.</div>'}
+        <fieldset class="field">
+          <div class="row"><span class="grow field-label">Ratings <em class="muted">(1 = needs lots of work, 5 = sharp)</em></span>
+            <button type="button" class="btn ghost small" data-edit-skills>Edit categories</button></div>
+          <div data-ratings></div>
         </fieldset>
 
         <label class="field"><span>What went well</span><textarea name="wentWell" rows="2" placeholder="Shows up in their recap">${esc(s.wentWell)}</textarea></label>
@@ -116,23 +120,87 @@ export async function sessionFormView(clientId, sessionId) {
     renderDrills();
   });
 
-  for (const row of $$('[data-skill]', view)) {
-    row.addEventListener('click', e => {
-      const btn = e.target.closest('[data-n]');
-      if (!btn) return;
-      const n = Number(btn.dataset.n);
-      const skill = row.dataset.skill;
-      s.ratings[skill] = s.ratings[skill] === n ? undefined : n; // tap again to clear
-      if (s.ratings[skill] === undefined) delete s.ratings[skill];
-      $$('[data-n]', row).forEach(b => b.classList.toggle('on', Number(b.dataset.n) === s.ratings[skill]));
-    });
+  // Session type dropdown, with "+ New type…" at the bottom.
+  const typeSelect = $('[data-type]', view);
+  const newTypeRow = $('[data-new-type]', view);
+  function renderTypes(selected) {
+    const options = s.type && !types.includes(s.type) ? [...types, s.type] : types;
+    typeSelect.innerHTML = options.map(t => `<option ${t === selected ? 'selected' : ''}>${esc(t)}</option>`).join('')
+      + '<option value="__new">+ New type…</option>';
   }
+  renderTypes(s.type);
+  typeSelect.addEventListener('change', () => {
+    if (typeSelect.value !== '__new') { s.type = typeSelect.value; return; }
+    newTypeRow.hidden = false;
+    $('input', newTypeRow).focus();
+  });
+  async function addType() {
+    const input = $('input', newTypeRow);
+    const name = input.value.trim();
+    if (!name) return;
+    if (!types.some(t => t.toLowerCase() === name.toLowerCase())) {
+      types = [...types, name];
+      await db.setMeta('sessionTypes', types);
+    }
+    s.type = types.find(t => t.toLowerCase() === name.toLowerCase());
+    input.value = '';
+    newTypeRow.hidden = true;
+    renderTypes(s.type);
+  }
+  $('[data-save-type]', view).addEventListener('click', addType);
+  $('input', newTypeRow).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addType(); } });
+  $('[data-cancel-type]', view).addEventListener('click', () => { newTypeRow.hidden = true; renderTypes(s.type); });
+
+  // Ratings: one row per category this client is tracked on.
+  const ratingsEl = $('[data-ratings]', view);
+  function renderRatings() {
+    ratingsEl.innerHTML = client.skills.length ? client.skills.map(skill => `
+      <div class="rating-row" data-skill="${esc(skill)}">
+        <span class="grow">${esc(skill)}</span>
+        <div class="seg">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${s.ratings[skill] === n ? 'on' : ''}">${n}</button>`).join('')}</div>
+      </div>`).join('') : '<div class="muted small">No rating categories for this client. Tap “Edit categories” to add some.</div>';
+  }
+  renderRatings();
+  ratingsEl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-n]');
+    if (!btn) return;
+    const row = btn.closest('[data-skill]');
+    const n = Number(btn.dataset.n);
+    const skill = row.dataset.skill;
+    if (s.ratings[skill] === n) delete s.ratings[skill]; // tap again to clear
+    else s.ratings[skill] = n;
+    $$('[data-n]', row).forEach(b => b.classList.toggle('on', Number(b.dataset.n) === s.ratings[skill]));
+  });
+
+  $('[data-edit-skills]', view).addEventListener('click', async () => {
+    const suggestions = await skillSuggestions();
+    openSheet({
+      title: `${client.name}'s rating categories`,
+      body: `
+        <p class="muted small">Changes apply to this client from now on. Removing a category hides it but keeps its past ratings — add it back and its history returns.</p>
+        <div class="list-editor" data-editor></div>
+        <button type="button" class="btn primary block" data-done>Done</button>`,
+      onMount: (el, close) => {
+        const editor = listEditor($('[data-editor]', el), { items: client.skills, suggestions, placeholder: 'New category (e.g. Footwork)' });
+        $('[data-done]', el).addEventListener('click', async () => {
+          client.skills = editor.get();
+          await db.put('clients', client);
+          if (!existing) { // a brand-new session shouldn't keep ratings for categories just removed
+            for (const skill of Object.keys(s.ratings)) if (!client.skills.includes(skill)) delete s.ratings[skill];
+          }
+          renderRatings();
+          close();
+          toast('Categories updated');
+        });
+      },
+    });
+  });
 
   async function save() {
     const f = new FormData(form);
     Object.assign(s, {
       date: f.get('date'),
-      type: f.get('type'),
+      type: s.type,
       duration: Number(f.get('duration')) || 0,
       wentWell: f.get('wentWell').trim(),
       workOn: f.get('workOn').trim(),

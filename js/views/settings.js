@@ -1,13 +1,14 @@
 // Settings: his name for recaps, backups, and install help.
-import { db, STORES } from '../db.js';
-import { esc, $, daysAgo, toast } from '../util.js';
-import { page } from '../ui.js';
+import { db, STORES, sessionTypes } from '../db.js';
+import { esc, $, daysAgo, toast, isoDate } from '../util.js';
+import { page, listEditor } from '../ui.js';
+import { SESSION_TYPES } from '../seed.js';
 import { exportBackup, importBackup } from '../backup.js';
 
 export async function settingsView() {
-  const [trainerName, recapClosing, lastBackup, clients, memos] = await Promise.all([
+  const [trainerName, recapClosing, lastBackup, clients, memos, types] = await Promise.all([
     db.getMeta('trainerName', ''), db.getMeta('recapClosing', 'Keep putting in the work - see you on the mats.'),
-    db.getMeta('lastBackup'), db.all('clients'), db.all('memos'),
+    db.getMeta('lastBackup'), db.all('clients'), db.all('memos'), sessionTypes(),
   ]);
   const persisted = await navigator.storage?.persisted?.();
   const estimate = await navigator.storage?.estimate?.();
@@ -24,9 +25,15 @@ export async function settingsView() {
       </section>
 
       <section class="card stack">
+        <h3>Session types</h3>
+        <p class="muted small">The Type dropdown when you log a session. Removing one doesn't change sessions already logged.</p>
+        <div class="list-editor" data-types></div>
+      </section>
+
+      <section class="card stack">
         <h3>Backup</h3>
         <p class="small">Your data lives only on this device: ${clients.length} clients, ${memos.length} voice memos${estimate ? `, about ${(estimate.usage / 1048576).toFixed(1)} MB` : ''}.
-          ${lastBackup ? `Last backup <b>${daysAgo(lastBackup.slice(0, 10))}</b>.` : '<b class="warn-text">Never backed up.</b>'}</p>
+          ${lastBackup ? `Last backup <b>${daysAgo(isoDate(new Date(lastBackup)))}</b>.` : '<b class="warn-text">Never backed up.</b>'}</p>
         <button class="btn primary block" data-export>💾 Back up now</button>
         <p class="muted small">${isIOS ? 'Choose “Save to Files” (iCloud Drive) or AirDrop it to your laptop.' : 'Saves a .json file to your downloads.'} Restore that file on another device to move everything over.</p>
         <label class="btn ghost block">📂 Restore from backup<input type="file" accept=".json,application/json" hidden data-import></label>
@@ -52,7 +59,16 @@ export async function settingsView() {
       <p class="muted small center">Spotter v1 · data never leaves this device unless you back it up or send a recap</p>`,
   });
 
+  listEditor($('[data-types]', view), {
+    items: types,
+    suggestions: SESSION_TYPES,
+    placeholder: 'New type (e.g. Fight camp)',
+    emptyText: 'No types — the dropdown will be empty.',
+    onChange: list => db.setMeta('sessionTypes', list),
+  });
+
   view.addEventListener('change', async e => {
+    if (e.target.matches('[data-new]')) return;
     const key = e.target.dataset.meta;
     if (!key) return;
     await db.setMeta(key, e.target.value.trim());

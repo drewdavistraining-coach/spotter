@@ -1,3 +1,5 @@
+import { SESSION_TYPES } from './seed.js';
+
 // Tiny IndexedDB wrapper. Everything Spotter knows lives in these stores,
 // on the device only. Audio memos are stored as Blobs in "memos".
 const DB_NAME = 'spotter';
@@ -52,6 +54,11 @@ export const db = {
   },
   async setMeta(key, value) { return this.put('meta', { id: key, value }); },
 };
+
+// Drew's session types (Log session dropdown), editable from the form and Settings.
+export function sessionTypes() {
+  return db.getMeta('sessionTypes', SESSION_TYPES);
+}
 
 export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);

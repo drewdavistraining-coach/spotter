@@ -28,6 +28,41 @@ export function openSheet({ title, body, onMount }) {
   return { el: overlay, close };
 }
 
+// Editable list of names: tap ✕ to remove, tap a suggestion or type one to add.
+// Used for a client's rating categories and for session types.
+export function listEditor(container, { items, suggestions = [], placeholder = 'Add…', emptyText = 'Nothing yet.', onChange }) {
+  let list = [...items];
+  const render = (focus = false) => {
+    const extra = [...new Set(suggestions)].filter(s => !list.includes(s));
+    container.innerHTML = `
+      <div class="chips">${list.map((s, i) => `<span class="chip-on">${esc(s)}<button type="button" class="chip-x" data-remove="${i}" aria-label="Remove ${esc(s)}">✕</button></span>`).join('') || `<span class="muted small">${esc(emptyText)}</span>`}</div>
+      ${extra.length ? `<div class="chips">${extra.map(s => `<button type="button" class="chip-btn" data-suggest="${esc(s)}">+ ${esc(s)}</button>`).join('')}</div>` : ''}
+      <div class="row gap"><input class="grow" data-new placeholder="${esc(placeholder)}" enterkeyhint="done"><button type="button" class="btn ghost" data-add>Add</button></div>`;
+    if (focus) container.querySelector('[data-new]').focus();
+  };
+  const changed = focus => { render(focus); onChange?.([...list]); };
+  const add = (name, focus) => {
+    name = name.trim();
+    if (!name || list.some(x => x.toLowerCase() === name.toLowerCase())) return;
+    list.push(name);
+    changed(focus);
+  };
+  container.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.dataset.remove !== undefined) { list.splice(Number(btn.dataset.remove), 1); changed(); }
+    else if (btn.dataset.suggest) add(btn.dataset.suggest);
+    else if (btn.dataset.add !== undefined) add(container.querySelector('[data-new]').value, true);
+  });
+  container.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !e.target.matches('[data-new]')) return;
+    e.preventDefault(); // don't submit the surrounding form
+    add(e.target.value, true);
+  });
+  render();
+  return { get: () => [...list] };
+}
+
 export function sparkline(series, { width = 120, height = 34 } = {}) {
   if (!series.length) return '<span class="muted small">no ratings yet</span>';
   const pts = series.slice(-12);
