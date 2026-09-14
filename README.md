@@ -14,6 +14,9 @@ Then open http://localhost:5174. There's no build step: edit a file, refresh.
 
 ## Put it on his iPhone
 
+**Live at https://drewdavistraining-coach.github.io/spotter/**. It's hosted by GitHub Pages from the `main` branch of
+[drewdavistraining-coach/spotter](https://github.com/drewdavistraining-coach/spotter), so every push to `main` redeploys it.
+
 The iPhone needs the app served over **HTTPS** (for the mic and for installing), so it has to be hosted.
 The app is just static files, so GitHub Pages, Netlify or Cloudflare Pages all work for free. The hosted
 copy contains only code. Client data never leaves the phone.
