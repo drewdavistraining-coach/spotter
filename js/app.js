@@ -58,5 +58,25 @@ route();
 
 // Skipped on localhost so edits show up on refresh instead of being served from the offline cache.
 if ('serviceWorker' in navigator && !['localhost', '127.0.0.1'].includes(location.hostname)) {
-  navigator.serviceWorker.register('./sw.js');
+  const openedAt = Date.now();
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  const registration = await navigator.serviceWorker.register('./sw.js');
+
+  // iPhone apps resumed from the background don't re-check for updates on their own, so check every time
+  // Spotter comes back to the foreground.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') registration.update();
+  });
+
+  // A new version took over. Reload straight away if he's only just opened the app or it's in the background;
+  // otherwise offer a tap-to-refresh so a half-typed session isn't lost.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return; // first install, nothing to refresh
+    if (document.visibilityState === 'hidden' || Date.now() - openedAt < 10000) return location.reload();
+    const bar = document.createElement('button');
+    bar.className = 'update-bar';
+    bar.textContent = 'Spotter was updated — tap to refresh';
+    bar.addEventListener('click', () => location.reload());
+    document.body.append(bar);
+  });
 }

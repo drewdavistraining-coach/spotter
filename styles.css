@@ -302,4 +302,9 @@ details summary::-webkit-details-marker { display: none; }
   transform: translate(-50%, 10px); opacity: 0; transition: all .25s ease;
   background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; max-width: 90vw;
 }
+.update-bar {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + var(--safe-bottom)); z-index: 90;
+  border: 0; border-radius: 999px; padding: 11px 18px; font: inherit; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px rgba(0, 0, 0, .4); white-space: nowrap;
+}
 .toast.show { opacity: 1; transform: translate(-50%, 0); }

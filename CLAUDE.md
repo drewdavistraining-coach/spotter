@@ -10,8 +10,10 @@ developer. Explain changes in plain language, and keep the code simple enough fo
 
 - **Live site = `main` branch.** GitHub Pages serves https://drewdavistraining-coach.github.io/spotter/ from
   `main`, so every push to `main` ships to Drew's phone. Test locally before pushing.
-- **Bump `VERSION` in `sw.js` on every change to a cached file** (anything in its `SHELL` list). Otherwise
-  installed phones keep serving the old cached copy. If you add a new JS/CSS file, add it to `SHELL` too.
+- **Bump `VERSION` in `sw.js` on every change to a cached file** (anything in its `SHELL` list). The service
+  worker is network-first, so an online phone loads new files anyway. But the version bump is what refreshes
+  the offline copy and triggers the in-app "updated" reload. If you add a new JS/CSS file, add it to `SHELL` too.
+- The service worker is skipped on localhost, so update behaviour can only be tested on the live site.
 - **Never break existing data.** Client data lives only in IndexedDB on Drew's devices, and there's no server
   copy. If you change the shape of a stored record, read old records defensively (see `programFor()` in
   `js/planner.js` for the pattern), or bump `DB_VERSION` in `js/db.js` with a migration in `onupgradeneeded`.

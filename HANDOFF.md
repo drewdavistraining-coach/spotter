@@ -70,16 +70,16 @@ in the terminal to stop it.
    or *"Make the recap email mention how many rounds of sparring they did."* The `CLAUDE.md` file in this
    folder gives Claude the rules for this app.
 4. **Test it** in the browser. Click through the screen you changed, then refresh.
-5. **Bump the version:** in `sw.js`, change `const VERSION = 'spotter-v1'` to the next number (`spotter-v2`, …).
-   Skip this and your phone keeps showing the old version.
+5. **Bump the version:** in `sw.js`, raise the number in `const VERSION = 'spotter-v3'` (`spotter-v4`, …).
+   Skip this and the offline copy on your phone stays out of date.
 6. **Publish:**
    ```bash
    git add -A
    git commit -m "Short description of what changed"
    git push
    ```
-7. About a minute later the live site updates. On your phone, **close Spotter fully and reopen it**. Sometimes
-   it takes two reopens to switch to the new version.
+7. About a minute later the live site updates. The next time you open or switch back to Spotter on your phone,
+   it picks up the update. If you're mid-screen, a "Spotter was updated — tap to refresh" button appears.
 
 ### The three rules
 

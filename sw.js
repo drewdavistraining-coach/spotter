@@ -1,6 +1,8 @@
-// Offline support: cache the app shell, serve it cache-first.
-// Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = 'spotter-v2';
+// Offline support, network-first: when online, always load the latest files from the site
+// (so a push reaches the phone on its next open); when offline or the network is slow, use the cached copy.
+// Bump VERSION when you change files: that's what tells installed apps a new version exists.
+const VERSION = 'spotter-v3';
+const NETWORK_TIMEOUT_MS = 3000; // slow gym wifi falls back to the cache instead of hanging
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png',
   'js/app.js', 'js/db.js', 'js/seed.js', 'js/util.js', 'js/ui.js', 'js/progress.js', 'js/planner.js', 'js/recap.js',
@@ -10,7 +12,12 @@ const SHELL = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's HTTP cache, so a new version never gets stuck with stale files.
+  event.waitUntil(
+    caches.open(VERSION)
+      .then(cache => cache.addAll(SHELL.map(url => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', event => {
@@ -22,8 +29,22 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;
-  event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then(hit => hit || fetch(event.request)),
-  );
+  const { request } = event;
+  if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
+  event.respondWith(networkFirst(request));
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(VERSION);
+  const fromNetwork = fetch(request, { cache: 'no-cache' }).then(response => {
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  });
+  const timeout = new Promise(resolve => setTimeout(resolve, NETWORK_TIMEOUT_MS));
+  try {
+    const response = await Promise.race([fromNetwork, timeout]);
+    if (response) return response;
+  } catch { /* offline: fall through to the cache */ }
+  const cached = await cache.match(request, { ignoreSearch: true });
+  return cached || fromNetwork; // nothing cached yet: keep waiting on the network
+}
