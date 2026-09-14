@@ -9,6 +9,7 @@ import { recapView } from './views/recap.js';
 import { weekView } from './views/week.js';
 import { drillsView } from './views/drills.js';
 import { settingsView } from './views/settings.js';
+import { startSync } from './sync.js';
 
 const ID = '([a-z0-9]+)';
 const DATE = '(\\d{4}-\\d{2}-\\d{2})';
@@ -55,6 +56,19 @@ async function firstRun() {
 window.addEventListener('hashchange', route);
 await firstRun();
 route();
+startSync();
+
+// Another device's changes arrived. Refresh the screen, unless he's typing or in a form
+// (those screens load fresh data next time they open anyway).
+window.addEventListener('spotter:remote-change', async () => {
+  const path = location.hash.slice(1).split('?')[0] || '/';
+  const formScreen = /\/(new|edit|recap)$|\/sessions\/|^\/settings$/.test(path);
+  const busy = document.querySelector('.sheet-backdrop') || document.activeElement?.matches('input, textarea, select');
+  if (formScreen || busy) return;
+  const y = window.scrollY;
+  await route();
+  window.scrollTo(0, y);
+});
 
 // Skipped on localhost so edits show up on refresh instead of being served from the offline cache.
 if ('serviceWorker' in navigator && !['localhost', '127.0.0.1'].includes(location.hostname)) {

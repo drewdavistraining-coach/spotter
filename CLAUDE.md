@@ -14,16 +14,21 @@ developer. Explain changes in plain language, and keep the code simple enough fo
   worker is network-first, so an online phone loads new files anyway. But the version bump is what refreshes
   the offline copy and triggers the in-app "updated" reload. If you add a new JS/CSS file, add it to `SHELL` too.
 - The service worker is skipped on localhost, so update behaviour can only be tested on the live site.
-- **Never break existing data.** Client data lives only in IndexedDB on Drew's devices, and there's no server
-  copy. If you change the shape of a stored record, read old records defensively (see `programFor()` in
-  `js/planner.js` for the pattern), or bump `DB_VERSION` in `js/db.js` with a migration in `onupgradeneeded`.
-  Remind Drew to tap Settings → Back up now before shipping anything that touches storage.
+- **Never break existing data.** Records live in IndexedDB on each device and sync to Supabase. Old records
+  from other devices can arrive at any time, so if you change a record's shape, read old records defensively
+  (see `programFor()` in `js/planner.js` for the pattern). Never rename a store or a record id.
+  Remind Drew to tap Settings → Back up now before shipping anything that touches storage or sync.
+- **All writes go through `db.put` / `db.del`.** That's what stamps `_modified` and queues the change for
+  upload. Writing to IndexedDB any other way means the change never syncs. Use `{ fromSync: true }` only
+  inside `js/sync.js`.
 - **No build step, no frameworks, no npm dependencies.** Plain ES modules loaded straight by the browser.
   All paths are relative (`./`, not `/`), because the site lives under `/spotter/`.
-- **Nothing leaves the device** except a backup file he exports himself or a recap he chooses to send.
-  Private coach notes and voice memos never go into recaps.
-- **No secrets in this repo.** The repo is public. When AI recaps get added, the Claude API key must live
-  on a server, never in these files.
+- **Data goes only to Drew's own Supabase account** (when he's signed in), to a backup file he exports, or
+  in a recap he chooses to send. Private coach notes and voice memos never go into recaps.
+- **No secrets in this repo.** The repo is public. The Supabase URL and publishable key in `js/sync.js` are
+  meant to be public, because row-level security in `supabase/schema.sql` is what protects the data.
+  Never add the `service_role` / secret key. When AI recaps get added, the Claude API key must live on a
+  server, never in these files.
 
 ## Run locally
 
@@ -51,9 +56,30 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his
   device's database, so changing `seed.js` doesn't change his existing drills.
 
-## Decisions already made (v1, Sep 2026)
+## Sync (`js/sync.js`, `supabase/schema.sql`)
 
-- iPhone first, laptop second. On-device storage plus a manual backup file. No sync yet.
+- Supabase project `bzrsalvbtbpyvdvsmckh`, all tied to Drew's account. Every record is one row in
+  `public.records` (`store`, `id`, `data` jsonb, `deleted`, `modified`, `updated_at`).
+- **Local-first:** screens only ever read IndexedDB. The sync loop pushes the `outbox` store, then pulls rows
+  whose `updated_at` is newer than the last pull.
+- **When it runs:** when the app opens, 1.5s after a local edit, when the app returns to the foreground or
+  reconnects, and every 10s while it's on screen.
+- **Conflicts:** the newest edit wins, per record, enforced by a database trigger and checked again on pull.
+  Deletes are kept as rows with `deleted = true`, so they sync too.
+- **A device's first sync merges.** It pulls everything, swaps its own seeded drill copies for the server's
+  (matched by name), then uploads whatever the server doesn't have.
+- **Voice memo audio** lives in the private `memos` storage bucket at `<user id>/<memo id>.m4a`. The memo
+  record stores `audioPath`, never the audio itself.
+- **Meta:** only `SYNCED_META` keys sync (`sessionTypes`, `trainerName`, `recapClosing`). Sign-in, the sync
+  cursor and the backup date stay on each device and never go into backup files.
+- **Database changes are run by hand** in the Supabase SQL Editor. Add a new `.sql` file under `supabase/`
+  and keep every script safe to re-run. The Supabase GitHub integration is deliberately off.
+- **Testing against the live project** writes to Drew's real account. Name test records clearly and delete
+  them afterwards.
+
+## Decisions already made (Sep 2026)
+
+- iPhone first, laptop second. On-device storage that syncs through Supabase, plus an optional backup file.
 - Recaps are template-written (`js/recap.js`) and sent through his own mail app via `mailto:`.
 - The program engine uses a level per discipline, a Learn → Build → Apply → Test & recover block, a
   rotating discipline focus, and novelty scoring. The goal is structure and longevity for long-term clients,
@@ -61,6 +87,6 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
 
 ## Roadmap (not built)
 
-1. AI-written recaps and memo transcription (Claude API behind a small server)
-2. Sync between devices (e.g. Supabase)
-3. Client portal: clients log in to see their plan, progress and schedule
+1. AI-written recaps and memo transcription (Claude API behind a small server, e.g. a Supabase Edge Function)
+2. Client portal: clients log in to see their plan, progress and schedule. This needs a table and policies
+   separate from Drew's `records`.

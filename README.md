@@ -1,8 +1,8 @@
 # Spotter
 
 A coaching app for Drew: client profiles, session logs with skill ratings, voice memos,
-auto-built weekly programs, progress trends, and recap emails. v1 is just for Drew. There's no server
-and no accounts, and all data stays on his device.
+auto-built weekly programs, progress trends, and recap emails. It's just for Drew for now. It works offline
+on each device and syncs between his phone and laptop through his own Supabase account.
 
 ## Run it locally
 
@@ -19,15 +19,21 @@ Then open http://localhost:5174. There's no build step: edit a file, refresh.
 
 The iPhone needs the app served over **HTTPS** (for the mic and for installing), so it has to be hosted.
 The app is just static files, so GitHub Pages, Netlify or Cloudflare Pages all work for free. The hosted
-copy contains only code. Client data never leaves the phone.
+copy contains only code. Client data lives on his devices and in his Supabase account.
 
 1. Open the URL in **Safari**, then tap Share → **Add to Home Screen**.
-2. Always open it from the home-screen icon. The installed app keeps its own storage, and iOS doesn't
-   clear an installed app's data the way it can clear a website's.
-3. Settings → **Back up now** every week or so (Save to Files / iCloud Drive).
+2. Always open it from the home-screen icon. The installed app keeps its own storage (separate from the
+   Safari tab), and iOS doesn't clear an installed app's data the way it can clear a website's.
+3. In the installed app: Settings → **Sync** → sign in.
 
-**Laptop:** open the same URL in a browser, then use Settings → Restore from backup to load the phone's data.
-There's no live sync in v1: whichever device he restores onto gets a copy, and it doesn't sync back.
+**Laptop:** open the same URL in a browser and sign in under Settings → Sync. Both devices stay current:
+changes show up on the other device within seconds when both are online, and catch up after being offline.
+
+## Sync
+
+Supabase project `bzrsalvbtbpyvdvsmckh`, database set up once from [`supabase/schema.sql`](supabase/schema.sql)
+in the Supabase SQL Editor. How it works is in `CLAUDE.md` → Sync, and the code is `js/sync.js`.
+**Once Drew's account exists, turn off new sign-ups:** Authentication → Sign In / Providers → "Allow new users to sign up".
 
 **Shipping an update:** change the files, bump `VERSION` in `sw.js`, redeploy. The phone picks it up
 the next time the app is opened (sometimes it takes a second open).
@@ -86,12 +92,12 @@ To add AI later: write a function with the same inputs that calls the Claude API
 | `js/progress.js` | Skill trends, "areas to sharpen", weekly counts |
 | `js/recap.js` | Recap email template |
 | `js/recorder.js` | Voice memo recorder |
-| `js/backup.js` | Backup export / restore |
+| `js/backup.js` | Backup export / restore (a merge when signed in) |
+| `js/sync.js`, `supabase/schema.sql` | Phone ↔ laptop sync and the database setup it needs |
 | `js/views/*.js` | One file per screen |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline caching + installable app |
 
 ## Later (not built)
 
 - AI-written recaps and memo transcription (Claude API behind a small server)
-- Sync between devices (e.g. Supabase), which is also the base for client logins
 - Client portal: clients log in to see their plan, progress and schedule

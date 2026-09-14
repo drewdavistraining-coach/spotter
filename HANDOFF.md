@@ -5,8 +5,8 @@ Spotter already belongs to you: the code lives in your GitHub account
 https://drewdavistraining-coach.github.io/spotter/. Nothing has to be transferred. This guide gets your own
 computer set up so you can change the app and publish updates yourself.
 
-**Your client data is not in the code.** It lives on your phone (and on any laptop where you restored a
-backup). Setting up a computer, cloning the code or changing it never touches that data. Only a code change
+**Your client data is not in the code.** It lives on your devices and in your Supabase account, which syncs
+them. Setting up a computer, cloning the code or changing it never touches that data. Only a code change
 that breaks how data is read can hurt it, which is why rule 3 below exists.
 
 ---
@@ -86,7 +86,8 @@ in the terminal to stop it.
 1. **Test locally before you push.** Whatever is on GitHub `main` is what your phone runs.
 2. **Always bump `VERSION` in `sw.js`** when you change the app.
 3. **Back up before risky changes.** Before publishing anything that changes how clients, sessions or plans
-   are *saved*, tap Settings → **Back up now** on your phone first.
+   are *saved* or *synced*, tap Settings → **Back up now** on your phone first. A bad sync change copies itself
+   to every device.
 
 ### If an update breaks something
 
@@ -104,12 +105,16 @@ is untouched (unless a change deleted it, which is why rule 3 exists).
 
 ## Part 3: looking after your data
 
-- **Back up weekly:** Settings → Back up now → Save to Files (iCloud Drive). The app nags you after 7 days.
-- **New phone, or using a laptop too:** install Spotter on the new device, then Settings → Restore from
-  backup. Restoring *replaces* whatever is on that device.
-- **Don't delete the home-screen icon** without backing up first. Removing it can wipe that copy's data.
-- **If the web address ever changes** (a custom domain, a renamed account or repo), the app at the new address
-  starts empty. Back up on the old one and restore on the new one.
+- **Sync:** sign in once on each device under Settings → Sync. Phone and laptop then stay matched.
+  Settings shows "✓ Up to date", or how many changes are waiting while you're offline.
+- **New phone, or a new laptop:** install Spotter, sign in, and everything downloads.
+- **Your Supabase account holds the cloud copy.** Keep its login safe. If the project sits unused for a week
+  on the free plan it pauses; unpause it from the Supabase dashboard, and nothing is lost.
+- **An occasional backup file is still a good idea** (Settings → Back up now → Save to Files). It's a copy
+  you control even if something goes wrong with the cloud. With sync on, restoring one merges: for each
+  record, the newest version wins.
+- **If the web address ever changes** (a custom domain, a renamed account or repo), just sign in again at the
+  new address. Sync brings everything back.
 
 ---
 

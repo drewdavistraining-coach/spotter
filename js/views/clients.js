@@ -6,9 +6,10 @@ import { programFor, cycleInfo, levelUpSuggestions } from '../planner.js';
 import { byDate, inRange, focusAreas, skillSummary, weeklyCounts } from '../progress.js';
 import { page, sparkline, trendArrow, emptyState, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
+import { deleteAudio } from '../sync.js';
 
 export async function clientsView() {
-  const [clients, sessions, lastBackup] = await Promise.all([db.all('clients'), db.all('sessions'), db.getMeta('lastBackup')]);
+  const [clients, sessions, lastBackup, auth] = await Promise.all([db.all('clients'), db.all('sessions'), db.getMeta('lastBackup'), db.getMeta('auth')]);
   const ws = weekStart();
   const rows = clients
     .map(c => {
@@ -18,13 +19,13 @@ export async function clientsView() {
     })
     .sort((a, b) => a.c.name.localeCompare(b.c.name));
 
-  const staleBackup = clients.length && (!lastBackup || Date.now() - new Date(lastBackup) > 7 * 86400000);
+  const staleBackup = clients.length && !auth && (!lastBackup || Date.now() - new Date(lastBackup) > 7 * 86400000);
 
   const view = page({
     title: 'Clients',
     action: '<a class="btn primary small" href="#/clients/new">+ Client</a>',
     body: `
-      ${staleBackup ? `<a class="banner" href="#/settings">💾 ${lastBackup ? `Last backup ${daysAgo(isoDate(new Date(lastBackup)))}` : 'No backup yet'} — tap to back up your data</a>` : ''}
+      ${staleBackup ? `<a class="banner" href="#/settings">💾 ${lastBackup ? `Last backup ${daysAgo(isoDate(new Date(lastBackup)))}` : 'No backup yet'} — tap to turn on sync or back up</a>` : ''}
       ${clients.length ? `<input class="search" type="search" placeholder="Search clients" data-search>` : ''}
       <div class="list" data-list>
         ${rows.length ? rows.map(({ c, last, thisWeek, focus }) => `
@@ -257,6 +258,7 @@ export function bindMemoCards(root, memos, refresh) {
     });
     $('[data-del-memo]', card).addEventListener('click', async () => {
       if (!confirm('Delete this voice memo?')) return;
+      deleteAudio(memo); // remove the synced audio file too, if there is one
       await db.del('memos', memo.id);
       refresh();
     });
