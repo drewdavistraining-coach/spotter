@@ -11,6 +11,7 @@
 // Talks to Supabase's REST endpoints directly with fetch, so there's no library to load (and nothing
 // that breaks offline).
 import { db, STORES, SYNCED_META } from './db.js';
+import { seedDrills } from './seed.js';
 
 // Public by design: security comes from row-level security in supabase/schema.sql, not from hiding these.
 const SUPABASE_URL = 'https://bzrsalvbtbpyvdvsmckh.supabase.co';
@@ -243,9 +244,28 @@ async function pull(session, { everything = false } = {}) {
   return { changed, remote };
 }
 
+const drillSignature = d => JSON.stringify([d.name, d.category, d.level, d.intensity, d.dose, [...(d.skills || [])].sort(), d.notes || '']);
+const STARTER_SIGNATURES = new Set(seedDrills(() => '').map(drillSignature));
+const isUntouchedStarter = d => !d._modified && STARTER_SIGNATURES.has(drillSignature(d));
+
 // First sync on this device (or after a restore): merge instead of overwrite.
 async function firstSync(session) {
+  // Settings share one fixed id per account, so another device's copy would overwrite this one's.
+  // Keep this device's: combine session-type lists; its own sign-off name and closing line win.
+  const localSettings = (await Promise.all(SYNCED_META.map(key => db.get('meta', key)))).filter(Boolean);
+
   const { changed, remote } = await pull(session, { everything: true });
+
+  for (const mine of localSettings) {
+    const current = await db.get('meta', mine.id);
+    let value = mine.value;
+    if (mine.id === 'sessionTypes' && Array.isArray(current?.value)) {
+      value = [...current.value, ...mine.value.filter(t => !current.value.some(c => c.toLowerCase() === String(t).toLowerCase()))];
+    } else if (typeof value === 'string' && !value.trim()) {
+      continue; // an empty local setting shouldn't blank out a real one
+    }
+    if (JSON.stringify(current?.value) !== JSON.stringify(value)) await db.setMeta(mine.id, value); // queued, and newest
+  }
 
   // Every device seeded its own copy of the starter drills with different ids. Keep the server's copy and
   // point this device's plans and sessions at it.
@@ -268,7 +288,29 @@ async function firstSync(session) {
       s.drills.forEach(d => { if (remap.has(d.drillId)) d.drillId = remap.get(d.drillId); });
       await db.put('sessions', s);
     }
-    for (const id of remap.keys()) await db.del('drills', id, { fromSync: true });
+    for (const [localId, serverId] of remap) {
+      const mine = drills.find(d => d.id === localId);
+      const theirs = drills.find(d => d.id === serverId);
+      await db.del('drills', localId, { fromSync: true });
+      // Drew customised this drill on this device (dose, level, cues…): keep his version under the shared id.
+      if (!isUntouchedStarter(mine) && drillSignature(mine) !== drillSignature(theirs)) {
+        await db.put('drills', { ...mine, id: serverId });
+      }
+    }
+  }
+
+  // If another device already built the library, this device's untouched starter drills that the server
+  // doesn't have were deleted over there on purpose. Don't bring them back (unless something here uses them).
+  if (drills.some(d => remote.has(`drills:${d.id}`))) {
+    const used = new Set([
+      ...(await db.all('plans')).flatMap(p => p.days.flat().map(b => b.drillId)),
+      ...(await db.all('sessions')).flatMap(s => (s.drills || []).map(d => d.drillId)),
+    ]);
+    for (const d of await db.all('drills')) {
+      if (remote.has(`drills:${d.id}`) || used.has(d.id) || !isUntouchedStarter(d)) continue;
+      remap.set(d.id, null); // excluded from upload below
+      await db.del('drills', d.id, { fromSync: true });
+    }
   }
 
   // Queue everything this device has that the server doesn't (or has an older copy of).

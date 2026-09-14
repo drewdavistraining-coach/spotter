@@ -29,8 +29,19 @@ function open() {
         if (BY_CLIENT.includes(name)) store.createIndex('clientId', 'clientId');
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // A newer version of Spotter opened in another tab needs to upgrade the database: step aside for it.
+      db.onversionchange = () => { db.close(); location.reload(); };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
+    // An older copy of Spotter in another tab/window is holding the database open. The upgrade carries on
+    // by itself as soon as that copy is closed.
+    req.onblocked = () => {
+      const view = document.getElementById('view');
+      if (view) view.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><h3>Finishing an update</h3><p>Spotter is open in another tab or window. Close it and this page will carry on.</p></div>';
+    };
   });
   return dbPromise;
 }
