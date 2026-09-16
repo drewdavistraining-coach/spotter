@@ -1,7 +1,7 @@
 {
   "name": "Spotter",
   "short_name": "Spotter",
-  "description": "Client tracking, training plans and recaps for coaches.",
+  "description": "Even trainers need a Spotter. Client tracking, training plans and recaps for coaches.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

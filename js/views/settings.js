@@ -66,7 +66,8 @@ export async function settingsView() {
         <button class="btn danger block" data-wipe>Erase all data on this device</button>
         ${signedIn ? '<p class="muted small">Only erases this device and signs it out. Your synced data stays in the cloud and comes back when you sign in again.</p>' : ''}
       </section>
-      <p class="muted small center">Spotter · ${signedIn ? 'synced privately to your account' : 'data never leaves this device unless you back it up or send a recap'}</p>`,
+      <p class="slogan center">“Even trainers need a Spotter”</p>
+      <p class="muted small center">${signedIn ? 'Synced privately to your account.' : 'Data never leaves this device unless you back it up or send a recap.'}</p>`,
   });
 
   renderSyncCard($('[data-sync]', view));

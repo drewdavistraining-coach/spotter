@@ -1,5 +1,7 @@
 # Spotter
 
+> "Even trainers need a Spotter"
+
 A coaching app for Drew: client profiles, session logs with skill ratings, voice memos,
 auto-built weekly programs, weights logged per set, cancellations, progress trends, and recap emails. It's just for Drew for now. It works offline
 on each device and syncs between his phone and laptop through his own Supabase account.
