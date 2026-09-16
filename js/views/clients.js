@@ -40,8 +40,7 @@ export async function clientsView() {
             ${focus ? `<span class="tag warn" title="Needs work">${esc(focus.skill)}</span>` : ''}
           </a>`).join('')
         : emptyState('🥊', 'No clients yet', 'Add your first client to start logging sessions, memos and recaps.', '<a class="btn primary" href="#/clients/new">Add a client</a>')}
-      </div>
-      ${rows.length ? '' : '<p class="slogan center">“Even trainers need a Spotter”</p>'}`,
+      </div>`,
   });
 
   $('[data-search]', view)?.addEventListener('input', e => {

@@ -57,7 +57,7 @@ async function firstRun() {
 const splash = document.getElementById('splash');
 if (splash) {
   const hideSplash = () => splash.classList.add('done');
-  setTimeout(hideSplash, matchMedia('(prefers-reduced-motion: reduce)').matches ? 100 : 2200);
+  setTimeout(hideSplash, matchMedia('(prefers-reduced-motion: reduce)').matches ? 100 : 2700);
   splash.addEventListener('pointerdown', hideSplash);
 }
 
