@@ -202,12 +202,22 @@ details summary::-webkit-details-marker { display: none; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 16px 0 18px; }
 .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
 .bar { width: 100%; max-width: 32px; min-height: 2px; background: var(--accent); border-radius: 5px 5px 2px 2px; position: relative; }
+.bar.off { background: color-mix(in srgb, var(--warn) 65%, transparent); margin-bottom: 2px; }
+.lift-row { grid-template-columns: 1fr auto 18px; }
+.cancelled-item { border-color: color-mix(in srgb, var(--warn) 30%, var(--line)); }
 .bar-n { position: absolute; left: 0; right: 0; top: -16px; text-align: center; font-size: 11px; color: var(--muted); }
 .bar-label { position: absolute; bottom: -18px; font-size: 10px; color: var(--muted); }
 
 /* Session form */
 .drill-list { display: flex; flex-direction: column; gap: 6px; }
-.drill-pill { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.drill-pill { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.drill-name { border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 6px 0; cursor: pointer; }
+.block-line { display: block; }
+.sets { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 6px; border-top: 1px solid var(--line); }
+.set-row { display: flex; align-items: center; gap: 6px; }
+.set-row input { padding: 7px 9px; }
+.set-n { width: 18px; font-size: 12px; color: var(--muted); }
+.set-row .unit { font-size: 12px; color: var(--muted); }
 .rating-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
 .seg { display: flex; gap: 4px; }
 .seg button {
@@ -253,9 +263,16 @@ details summary::-webkit-details-marker { display: none; }
 .day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .day.rest { background: transparent; }
 .day.today { border-color: var(--accent); }
-.day-head { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.day.cancelled { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 7%, var(--surface)); }
+.day.cancelled .block { opacity: .45; text-decoration: line-through; }
+.tag.good-tag { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
+.grip { cursor: grab; touch-action: none; color: var(--muted); }
+.block.lifted { background: var(--surface-2); border-radius: 10px; box-shadow: 0 8px 22px rgba(0, 0, 0, .45); transform: scale(1.02); }
+.day-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-height: 30px; }
+.day-head .grow { flex-basis: 0; }
 .block { display: flex; align-items: center; gap: 8px; padding: 8px 0 8px 2px; border-top: 1px solid var(--line); }
 .block.link { color: inherit; }
+.block.off .avatar { filter: grayscale(1); opacity: .6; }
 .dose { border: 0; background: transparent; padding: 0; font-size: 13px; color: var(--muted); }
 .dose:focus { outline: none; color: var(--text); }
 .link-row { padding: 8px 0; border-top: 1px solid var(--line); }
@@ -306,5 +323,10 @@ details summary::-webkit-details-marker { display: none; }
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + var(--safe-bottom)); z-index: 90;
   border: 0; border-radius: 999px; padding: 11px 18px; font: inherit; font-weight: 700;
   background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px rgba(0, 0, 0, .4); white-space: nowrap;
+}
+.toast.with-action { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; }
+.toast.with-action button {
+  border: 0; border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 700; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }

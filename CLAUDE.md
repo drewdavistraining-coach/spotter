@@ -53,6 +53,14 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   - session types are stored as meta `sessionTypes`, read through `sessionTypes()` in `db.js`.
 - Renaming a drill (`renameDrill()` in `js/views/drills.js`) also renames it in this week's and future plans.
   Past plans and logged sessions keep the old name as history.
+- **Cancellations** are session records with `cancelled: true` (plus `cancelReason`), so they appear in the
+  timeline, week view, progress tab and recaps. Anything counting training must filter them out: use
+  `attended()` / `cancelled()` from `js/progress.js`, never a raw session list.
+- **Weights** live on each logged drill as `sets: [{ weight, reps }]`, in the unit from meta `weightUnit`
+  ('lb' or 'kg' — numbers are never converted). `weightHistory()` and `lastSetsFor()` in `js/progress.js`
+  turn them into per-drill history; blank sets are stripped when a session is saved.
+- **Plan drag & drop** (`enableDrag()` in `js/views/plan.js`) uses pointer events and rebuilds the week from
+  the DOM on drop. Destructive taps in the plan offer `toastAction(…, 'Undo', …)` instead of a confirm dialog.
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his
   device's database, so changing `seed.js` doesn't change his existing drills.
 

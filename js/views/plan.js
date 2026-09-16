@@ -1,6 +1,6 @@
 // One client's weekly curriculum. Every change saves immediately.
 import { db, uid } from '../db.js';
-import { esc, $, $$, weekStart, addDays, fmtDate, fmtRange, DAY_NAMES, isoDate, toast } from '../util.js';
+import { esc, $, $$, weekStart, addDays, fmtDate, fmtRange, DAY_NAMES, isoDate, toast, toastAction } from '../util.js';
 import { CATEGORIES, LEVEL_SHORT, INTENSITY } from '../seed.js';
 import { page, openSheet, catDot } from '../ui.js';
 import { focusAreas } from '../progress.js';
@@ -11,6 +11,10 @@ export async function planView(clientId, week) {
   if (!client) return (location.hash = '#/');
   const ws = weekStart(week || isoDate());
   const [plans, drills, sessions] = await Promise.all([db.byClient('plans', clientId), db.all('drills'), db.byClient('sessions', clientId)]);
+  // A cancelled day is stored as a session record with cancelled: true, so it shows up in the timeline,
+  // the progress tab and recaps like any other day.
+  const cancelledDays = new Map(sessions.filter(s => s.cancelled).map(s => [s.date, s]));
+  const loggedDays = new Set(sessions.filter(s => !s.cancelled).map(s => s.date));
   const lastWeek = plans.find(p => p.weekStart === addDays(ws, -7));
   const plan = plans.find(p => p.weekStart === ws) || { id: uid(), clientId, weekStart: ws, days: emptyWeek(), notes: '' };
   const focusSkills = focusAreas(client, sessions).map(f => f.skill);
@@ -54,22 +58,31 @@ export async function planView(clientId, week) {
       ${focusSkills.length ? `<div class="small">Needs work: ${focusSkills.map(s => `<span class="${report.focusCovered.includes(s) ? 'good' : 'warn-text'}">${report.focusCovered.includes(s) ? '✓' : '✗'} ${esc(s)}</span>`).join(' · ')}</div>` : ''}`
       : '<div class="muted small">Empty week. Auto-build it from their program, or add drills day by day.</div>';
 
-    $('[data-days]', view).innerHTML = plan.days.map((blocks, day) => `
-      <section class="day ${blocks.length ? '' : 'rest'}">
+    $('[data-days]', view).innerHTML = plan.days.map((blocks, day) => {
+      const date = addDays(ws, day);
+      const off = cancelledDays.get(date);
+      return `
+      <section class="day ${blocks.length ? '' : 'rest'} ${off ? 'cancelled' : ''}" data-day="${day}" data-date="${date}">
         <div class="day-head">
-          <b>${DAY_NAMES[day]}</b> <span class="muted small">${fmtDate(addDays(ws, day), { month: 'short', day: 'numeric' })}</span>
+          <b>${DAY_NAMES[day]}</b> <span class="muted small">${fmtDate(date, { month: 'short', day: 'numeric' })}</span>
+          ${off ? `<span class="tag warn">🚫 Cancelled${off.cancelReason ? ` · ${esc(off.cancelReason)}` : ''}</span>` : ''}
+          ${loggedDays.has(date) ? '<span class="tag good-tag">✓ logged</span>' : ''}
           <span class="grow"></span>
-          <button class="btn ghost small" data-add="${day}">+ Drill</button>
+          ${off
+            ? `<button class="btn ghost small" data-uncancel="${day}">Undo cancel</button>`
+            : `<button class="btn ghost small" data-add="${day}">+ Drill</button>
+               <button class="btn ghost small" data-cancel="${day}" title="Client cancelled this day">🚫 Cancel</button>`}
         </div>
         ${blocks.map((b, i) => `
-          <div class="block">
+          <div class="block" data-pos="${day}:${i}" data-ref="${day}:${i}">
+            <button class="icon-btn small grip" data-grip aria-label="Drag to reorder ${esc(b.name)}" title="Drag to reorder">⠿</button>
             ${catDot(b.category)}
             <div class="grow"><div>${esc(b.name)}</div><input class="dose" value="${esc(b.dose)}" placeholder="sets / rounds" data-dose="${day}:${i}"></div>
             <button class="icon-btn small" data-swap="${day}:${i}" aria-label="Swap for a similar drill" title="Swap">⇄</button>
-            <button class="icon-btn small" data-up="${day}:${i}" aria-label="Move up" ${i ? '' : 'disabled'}>↑</button>
             <button class="icon-btn small" data-del="${day}:${i}" aria-label="Remove">✕</button>
           </div>`).join('')}
-      </section>`).join('');
+      </section>`;
+    }).join('');
   }
 
   render();
@@ -80,8 +93,17 @@ export async function planView(clientId, week) {
     const btn = e.target.closest('button');
     if (!btn) return;
     if (btn.dataset.add) return pickDrill(Number(btn.dataset.add));
-    if (btn.dataset.del) { const [d, i] = at(btn.dataset.del); plan.days[d].splice(i, 1); }
-    if (btn.dataset.up) { const [d, i] = at(btn.dataset.up); [plan.days[d][i - 1], plan.days[d][i]] = [plan.days[d][i], plan.days[d][i - 1]]; }
+    if (btn.dataset.cancel) return cancelDay(Number(btn.dataset.cancel));
+    if (btn.dataset.uncancel) return uncancelDay(Number(btn.dataset.uncancel));
+    if (btn.dataset.del) {
+      const [d, i] = at(btn.dataset.del);
+      const [removed] = plan.days[d].splice(i, 1);
+      toastAction(`Removed ${removed.name}`, 'Undo', async () => {
+        plan.days[d].splice(i, 0, removed);
+        await save();
+        render();
+      });
+    }
     if (btn.dataset.swap) {
       // Same category, fits their level, not already in this week.
       const [d, i] = at(btn.dataset.swap);
@@ -145,6 +167,99 @@ export async function planView(clientId, week) {
       },
     });
   });
+
+  const CANCEL_REASONS = ['Client cancelled', 'Illness', 'Injury', 'Work', 'Travel', 'No-show', 'Coach cancelled'];
+
+  function cancelDay(day) {
+    const date = addDays(ws, day);
+    openSheet({
+      title: `${DAY_NAMES[day]} ${fmtDate(date, { month: 'short', day: 'numeric' })}`,
+      body: `
+        <p class="small muted">Mark this day as cancelled. It stays in their timeline, progress and recap, but doesn't count as a session. The plan is kept, so you can move it to another day.</p>
+        <div class="chips">${CANCEL_REASONS.map(r => `<button class="chip-btn" data-reason="${esc(r)}">${esc(r)}</button>`).join('')}</div>`,
+      onMount: (el, close) => {
+        el.addEventListener('click', async e => {
+          const btn = e.target.closest('[data-reason]');
+          if (!btn) return;
+          const record = { id: uid(), clientId, date, cancelled: true, cancelReason: btn.dataset.reason, type: 'Cancelled', duration: 0, drills: [], ratings: {}, wentWell: '', workOn: '', privateNotes: '', createdAt: Date.now() };
+          await db.put('sessions', record);
+          sessions.push(record);
+          cancelledDays.set(date, record);
+          close();
+          render();
+          toast('Marked as cancelled');
+        });
+      },
+    });
+  }
+
+  async function uncancelDay(day) {
+    const date = addDays(ws, day);
+    const record = cancelledDays.get(date);
+    if (!record) return;
+    await db.del('sessions', record.id);
+    cancelledDays.delete(date);
+    sessions.splice(sessions.findIndex(s => s.id === record.id), 1);
+    render();
+  }
+
+  // Drag a drill by its grip to reorder it, or drop it on another day. Pointer events so it works
+  // the same with a finger on the iPhone and a mouse on the laptop.
+  function enableDrag(container) {
+    let dragging = null;
+    container.addEventListener('pointerdown', e => {
+      const grip = e.target.closest('[data-grip]');
+      if (!grip || e.button > 0) return;
+      e.preventDefault();
+      dragging = grip.closest('.block');
+      dragging.classList.add('lifted');
+      dragging.style.pointerEvents = 'none'; // so we can see what's underneath the finger
+      try { grip.setPointerCapture(e.pointerId); } catch { /* some browsers/synthetic events */ }
+
+      const move = ev => {
+        const y = ev.clientY;
+        if (y < 90) window.scrollBy(0, -12);
+        else if (y > window.innerHeight - 90) window.scrollBy(0, 12);
+        const under = document.elementFromPoint(ev.clientX, Math.max(0, Math.min(y, window.innerHeight - 1)));
+        if (!under) return;
+        const overBlock = under.closest?.('.block');
+        if (overBlock && overBlock !== dragging) {
+          const box = overBlock.getBoundingClientRect();
+          overBlock.parentElement.insertBefore(dragging, y < box.top + box.height / 2 ? overBlock : overBlock.nextSibling);
+          return;
+        }
+        const overDay = under.closest?.('.day');
+        if (overDay && !overDay.contains(dragging) && !overDay.classList.contains('cancelled')) overDay.append(dragging);
+      };
+
+      const finish = async () => {
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', finish);
+        grip.removeEventListener('pointercancel', finish);
+        dragging.classList.remove('lifted');
+        dragging.style.pointerEvents = '';
+        dragging = null;
+        // Rebuild the week from what's now on screen.
+        const before = plan.days.map(day => [...day]);
+        const rebuilt = emptyWeek();
+        for (const section of $$('.day', container)) {
+          for (const block of $$('.block', section)) {
+            const [d, i] = at(block.dataset.ref);
+            rebuilt[Number(section.dataset.day)].push(before[d][i]);
+          }
+        }
+        plan.days = rebuilt;
+        await save();
+        render();
+      };
+
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', finish);
+      grip.addEventListener('pointercancel', finish);
+    });
+  }
+
+  enableDrag($('[data-days]', view));
 
   function pickDrill(day) {
     openSheet({

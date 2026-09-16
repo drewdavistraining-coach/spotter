@@ -17,8 +17,10 @@ export async function weekView(week) {
   const days = DAY_NAMES.map((name, i) => {
     const date = addDays(ws, i);
     const planned = weekPlans.filter(p => p.days[i].length && byId[p.clientId]).map(p => ({ c: byId[p.clientId], blocks: p.days[i] }));
-    const logged = sessions.filter(s => s.date === date && byId[s.clientId]);
-    return { name, date, planned, logged };
+    const all = sessions.filter(s => s.date === date && byId[s.clientId]);
+    const logged = all.filter(s => !s.cancelled);
+    const off = all.filter(s => s.cancelled);
+    return { name, date, planned, logged, off };
   });
 
   const view = page({
@@ -44,16 +46,17 @@ export async function weekView(week) {
           <div class="day-head"><b>${d.name}</b> <span class="muted small">${fmtDate(d.date, { month: 'short', day: 'numeric' })}</span></div>
           ${d.planned.map(({ c, blocks }) => {
             const done = d.logged.some(s => s.clientId === c.id);
-            return `<a class="block link" href="#/clients/${c.id}/plan/${ws}">
+            const cancelled = d.off.some(s => s.clientId === c.id);
+            return `<a class="block link ${cancelled ? 'off' : ''}" href="#/clients/${c.id}/plan/${ws}">
               <div class="avatar sm">${esc(initials(c.name))}</div>
-              <div class="grow"><div>${esc(c.name)} ${done ? '<span class="good small">✓ logged</span>' : ''}</div>
+              <div class="grow"><div>${esc(c.name)} ${cancelled ? '<span class="warn-text small">🚫 cancelled</span>' : done ? '<span class="good small">✓ logged</span>' : ''}</div>
               <div class="small muted">${blocks.map(b => `${catDot(b.category)}${esc(b.name)}`).join(' ')}</div></div>
             </a>`;
           }).join('')}
-          ${d.logged.filter(s => !d.planned.some(p => p.c.id === s.clientId)).map(s => `
+          ${[...d.logged, ...d.off].filter(s => !d.planned.some(p => p.c.id === s.clientId)).map(s => `
             <a class="block link" href="#/clients/${s.clientId}/sessions/${s.id}">
               <div class="avatar sm">${esc(initials(byId[s.clientId].name))}</div>
-              <div class="grow">${esc(byId[s.clientId].name)} <span class="good small">✓ ${esc(s.type)}</span></div>
+              <div class="grow">${esc(byId[s.clientId].name)} ${s.cancelled ? `<span class="warn-text small">🚫 cancelled${s.cancelReason ? ` · ${esc(s.cancelReason)}` : ''}</span>` : `<span class="good small">✓ ${esc(s.type)}</span>`}</div>
             </a>`).join('')}
         </section>`).join('')}`}`,
   });

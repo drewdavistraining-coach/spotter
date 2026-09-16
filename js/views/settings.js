@@ -11,6 +11,7 @@ export async function settingsView() {
     db.getMeta('trainerName', ''), db.getMeta('recapClosing', 'Keep putting in the work - see you on the mats.'),
     db.getMeta('lastBackup'), db.all('clients'), db.all('memos'), sessionTypes(),
   ]);
+  const weightUnit = await db.getMeta('weightUnit', 'lb');
   const signedIn = Boolean(await db.getMeta('auth'));
   const persisted = await navigator.storage?.persisted?.();
   const estimate = await navigator.storage?.estimate?.();
@@ -26,6 +27,10 @@ export async function settingsView() {
         <h3>Recaps</h3>
         <label class="field"><span>Your name (email sign-off)</span><input data-meta="trainerName" value="${esc(trainerName)}" placeholder="Coach ___"></label>
         <label class="field"><span>Closing line</span><textarea data-meta="recapClosing" rows="2">${esc(recapClosing)}</textarea></label>
+        <fieldset class="field"><span>Weight unit</span>
+          <div class="chips">${['lb', 'kg'].map(u => `<button type="button" class="chip-btn ${u === weightUnit ? 'on' : ''}" data-unit="${u}">${u}</button>`).join('')}</div>
+          <span class="muted small">Used when you log weights for a drill. Changing it doesn't convert numbers already logged.</span>
+        </fieldset>
       </section>
 
       <section class="card stack">
@@ -65,6 +70,14 @@ export async function settingsView() {
   });
 
   renderSyncCard($('[data-sync]', view));
+
+  view.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-unit]');
+    if (!btn) return;
+    await db.setMeta('weightUnit', btn.dataset.unit);
+    $$('[data-unit]', view).forEach(b => b.classList.toggle('on', b === btn));
+    toast(`Weights in ${btn.dataset.unit}`);
+  });
 
   listEditor($('[data-types]', view), {
     items: types,

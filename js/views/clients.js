@@ -1,9 +1,9 @@
 // Client list, client profile form, and the client page (timeline + progress).
 import { db, uid } from '../db.js';
-import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration, initials, toast, DAY_NAMES } from '../util.js';
+import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration, initials, toast, DAY_NAMES, fmtSets } from '../util.js';
 import { DISCIPLINES, DEFAULT_SKILLS, LEVELS, LEVEL_SHORT } from '../seed.js';
 import { programFor, cycleInfo, levelUpSuggestions } from '../planner.js';
-import { byDate, inRange, focusAreas, skillSummary, weeklyCounts } from '../progress.js';
+import { byDate, inRange, focusAreas, skillSummary, weeklyCounts, attended, cancelled, weightHistory } from '../progress.js';
 import { page, sparkline, trendArrow, emptyState, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
 import { deleteAudio } from '../sync.js';
@@ -14,8 +14,10 @@ export async function clientsView() {
   const rows = clients
     .map(c => {
       const mine = sessions.filter(s => s.clientId === c.id);
-      const last = byDate(mine).at(-1);
-      return { c, last, thisWeek: inRange(mine, ws, addDays(ws, 6)).length, focus: focusAreas(c, mine, 1)[0] };
+      const trained = attended(mine);
+      const last = byDate(trained).at(-1);
+      const offThisWeek = cancelled(inRange(mine, ws, addDays(ws, 6))).length;
+      return { c, last, offThisWeek, thisWeek: inRange(trained, ws, addDays(ws, 6)).length, focus: focusAreas(c, trained, 1)[0] };
     })
     .sort((a, b) => a.c.name.localeCompare(b.c.name));
 
@@ -28,12 +30,12 @@ export async function clientsView() {
       ${staleBackup ? `<a class="banner" href="#/settings">💾 ${lastBackup ? `Last backup ${daysAgo(isoDate(new Date(lastBackup)))}` : 'No backup yet'} — tap to turn on sync or back up</a>` : ''}
       ${clients.length ? `<input class="search" type="search" placeholder="Search clients" data-search>` : ''}
       <div class="list" data-list>
-        ${rows.length ? rows.map(({ c, last, thisWeek, focus }) => `
+        ${rows.length ? rows.map(({ c, last, thisWeek, offThisWeek, focus }) => `
           <a class="card client-row" href="#/clients/${c.id}" data-name="${esc(c.name.toLowerCase())}">
             <div class="avatar">${esc(initials(c.name))}</div>
             <div class="grow">
               <div class="title">${esc(c.name)}</div>
-              <div class="muted small">${last ? `Last session ${daysAgo(last.date)}` : 'No sessions yet'} · ${thisWeek} this week</div>
+              <div class="muted small">${last ? `Last session ${daysAgo(last.date)}` : 'No sessions yet'} · ${thisWeek} this week${offThisWeek ? ` · <span class="warn-text">${offThisWeek} cancelled</span>` : ''}</div>
             </div>
             ${focus ? `<span class="tag warn" title="Needs work">${esc(focus.skill)}</span>` : ''}
           </a>`).join('')
@@ -155,7 +157,8 @@ export async function clientView(id, query) {
   const [sessions, memos, recaps] = await Promise.all([db.byClient('sessions', id), db.byClient('memos', id), db.byClient('recaps', id)]);
   const program = programFor(client);
   const cycle = cycleInfo(client, weekStart());
-  const levelUps = levelUpSuggestions(client, sessions);
+  const levelUps = levelUpSuggestions(client, attended(sessions));
+  const unit = await db.getMeta('weightUnit', 'lb');
 
   const view = page({
     title: client.name,
@@ -167,7 +170,7 @@ export async function clientView(id, query) {
         <div class="grow">
           ${client.goal ? `<div class="goal">🎯 ${esc(client.goal)}</div>` : '<div class="muted small">No goal set</div>'}
           <div class="tags">${DISCIPLINES.filter(d => program.levels[d] > 0).map(d => `<span class="tag" data-level="${program.levels[d]}">${esc(d)} · ${LEVEL_SHORT[program.levels[d]]}</span>`).join('') || `<a class="tag warn" href="#/clients/${id}/edit">Set program levels</a>`}</div>
-          <div class="muted small">${sessions.length} sessions${client.startDate ? ` · since ${fmtDate(client.startDate, { month: 'short', year: 'numeric' })}` : ''}</div>
+          <div class="muted small">${attended(sessions).length} sessions${client.startDate ? ` · since ${fmtDate(client.startDate, { month: 'short', year: 'numeric' })}` : ''}</div>
         </div>
       </section>
       ${cycle.theme ? `
@@ -186,7 +189,7 @@ export async function clientView(id, query) {
         <a href="#/clients/${id}?tab=timeline" class="${tab === 'timeline' ? 'on' : ''}">Timeline</a>
         <a href="#/clients/${id}?tab=progress" class="${tab === 'progress' ? 'on' : ''}">Progress</a>
       </div>
-      <div data-tab>${tab === 'progress' ? progressTab(client, sessions) : timelineTab(client, sessions, memos, recaps)}</div>`,
+      <div data-tab>${tab === 'progress' ? progressTab(client, sessions, unit) : timelineTab(client, sessions, memos, recaps, unit)}</div>`,
   });
 
   $('[data-memo]', view).addEventListener('click', () =>
@@ -195,7 +198,7 @@ export async function clientView(id, query) {
   bindMemoCards(view, memos, () => clientView(id, query));
 }
 
-function timelineTab(client, sessions, memos, recaps) {
+function timelineTab(client, sessions, memos, recaps, unit) {
   const items = [
     ...sessions.map(s => ({ kind: 'session', date: s.date, at: s.createdAt, s })),
     ...memos.map(m => ({ kind: 'memo', date: m.date, at: m.createdAt, m })),
@@ -208,21 +211,29 @@ function timelineTab(client, sessions, memos, recaps) {
   return `<div class="timeline">${items.map(item => {
     const header = item.date !== lastDate ? `<div class="tl-date">${fmtDate(item.date)} <span class="muted">· ${daysAgo(item.date)}</span></div>` : '';
     lastDate = item.date;
-    if (item.kind === 'session') return header + sessionCard(client, item.s);
+    if (item.kind === 'session') return header + (item.s.cancelled ? cancelledCard(client, item.s) : sessionCard(client, item.s, unit));
     if (item.kind === 'memo') return header + memoCard(item.m);
     return header + recapCard(item.r);
   }).join('')}</div>`;
 }
 
-function sessionCard(client, s) {
+function sessionCard(client, s, unit) {
   const ratings = client.skills.filter(k => typeof s.ratings?.[k] === 'number');
   return `
     <a class="card tl-item" href="#/clients/${client.id}/sessions/${s.id}">
       <div class="tl-kind">📝 ${esc(s.type || 'Session')}${s.duration ? ` · ${esc(s.duration)} min` : ''}</div>
       ${s.drills?.length ? `<div class="small">${s.drills.map(d => esc(d.name)).join(' · ')}</div>` : ''}
+      ${(s.drills || []).filter(d => d.sets?.length).map(d => `<div class="small muted">🏋️ ${esc(d.name)}: ${esc(fmtSets(d.sets, unit))}</div>`).join('')}
       ${ratings.length ? `<div class="mini-ratings">${ratings.map(k => `<span>${esc(k)} <b>${s.ratings[k]}</b></span>`).join('')}</div>` : ''}
       ${s.wentWell ? `<div class="small good">✓ ${esc(s.wentWell)}</div>` : ''}
       ${s.workOn ? `<div class="small warn-text">↗ ${esc(s.workOn)}</div>` : ''}
+    </a>`;
+}
+
+function cancelledCard(client, s) {
+  return `
+    <a class="card tl-item cancelled-item" href="#/clients/${client.id}/sessions/${s.id}">
+      <div class="tl-kind">🚫 Cancelled${s.cancelReason ? ` · ${esc(s.cancelReason)}` : ''}</div>
     </a>`;
 }
 
@@ -265,12 +276,17 @@ export function bindMemoCards(root, memos, refresh) {
   }
 }
 
-function progressTab(client, sessions) {
-  if (!sessions.length) return emptyState('📈', 'No progress data yet', 'Rate skills when you log sessions and trends will build up here.');
+function progressTab(client, allSessions, unit) {
+  if (!allSessions.length) return emptyState('📈', 'No progress data yet', 'Rate skills when you log sessions and trends will build up here.');
+  const sessions = attended(allSessions);
   const summary = skillSummary(client, sessions);
   const focus = focusAreas(client, sessions);
-  const weeks = weeklyCounts(sessions);
-  const maxWeek = Math.max(1, ...weeks.map(w => w.count));
+  const weeks = weeklyCounts(allSessions);
+  const maxWeek = Math.max(1, ...weeks.map(w => w.count + w.cancelled));
+  const offs = byDate(cancelled(allSessions));
+  const recentOffs = offs.filter(s => s.date >= addDays(isoDate(), -56));
+  const attendance = sessions.length + offs.length ? Math.round((sessions.length / (sessions.length + offs.length)) * 100) : null;
+  const lifts = [...weightHistory(sessions).entries()].map(([, entries]) => entries).sort((a, b) => b.at(-1).date.localeCompare(a.at(-1).date));
 
   return `
     ${focus.length ? `
@@ -292,10 +308,29 @@ function progressTab(client, sessions) {
     <section class="card">
       <h3>Sessions per week</h3>
       <div class="bars">${weeks.map(w => `
-        <div class="bar-col" title="Week of ${fmtDate(w.start)}: ${w.count}">
+        <div class="bar-col" title="Week of ${fmtDate(w.start)}: ${w.count} trained${w.cancelled ? `, ${w.cancelled} cancelled` : ''}">
+          ${w.cancelled ? `<div class="bar off" style="height:${(w.cancelled / maxWeek) * 100}%"></div>` : ''}
           <div class="bar" style="height:${(w.count / maxWeek) * 100}%"><span class="bar-n">${w.count || ''}</span></div>
           <span class="bar-label">${fmtDate(w.start, { month: 'numeric', day: 'numeric' })}</span>
         </div>`).join('')}
       </div>
-    </section>`;
+      ${offs.length ? `<p class="muted small">${attendance}% of booked sessions trained.
+        <span class="warn-text">${recentOffs.length} cancelled in the last 8 weeks</span>${offs.length > recentOffs.length ? `, ${offs.length} all time` : ''}${offs.at(-1) ? ` · last ${fmtDate(offs.at(-1).date)}${offs.at(-1).cancelReason ? ` (${esc(offs.at(-1).cancelReason)})` : ''}` : ''}.</p>` : ''}
+    </section>
+    ${lifts.length ? `
+    <section class="card">
+      <h3>Weights</h3>
+      ${lifts.map(entries => {
+        const now = entries.at(-1);
+        const first = entries[0];
+        const change = entries.length > 1 && first.top && now.top ? Number(now.top.weight) - Number(first.top.weight) : 0;
+        return `
+        <div class="skill-row lift-row">
+          <span class="skill-name">${esc(now.name)}<span class="muted small block-line">${esc(fmtSets(now.sets, unit))} · ${fmtDate(now.date, { month: 'short', day: 'numeric' })}</span></span>
+          <b class="skill-val">${now.top ? `${now.top.weight} ${esc(unit)}` : '–'}</b>
+          ${trendArrow(change / 10)}
+        </div>`;
+      }).join('')}
+      <p class="muted small">Top set each time, and how it compares with the first time you logged it.</p>
+    </section>` : ''}`;
 }

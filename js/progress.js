@@ -1,5 +1,5 @@
 // Turns a client's logged sessions into trends and "areas to sharpen".
-import { average, addDays, weekStart, isoDate } from './util.js';
+import { average, addDays, weekStart, isoDate, topSet } from './util.js';
 
 export function byDate(list) {
   return [...list].sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
@@ -8,6 +8,10 @@ export function byDate(list) {
 export function inRange(sessions, from, to) {
   return sessions.filter(s => s.date >= from && s.date <= to);
 }
+
+// A cancelled session is still a record of that day; it just isn't training.
+export const attended = sessions => sessions.filter(s => !s.cancelled);
+export const cancelled = sessions => sessions.filter(s => s.cancelled);
 
 export function skillSeries(sessions, skill) {
   return byDate(sessions)
@@ -62,6 +66,36 @@ export function weeklyCounts(sessions, weeks = 8) {
   return Array.from({ length: weeks }, (_, i) => {
     const start = addDays(thisWeek, -7 * (weeks - 1 - i));
     const end = addDays(start, 6);
-    return { start, count: inRange(sessions, start, end).length };
+    const week = inRange(sessions, start, end);
+    return { start, count: attended(week).length, cancelled: cancelled(week).length };
   });
+}
+
+// Every drill that had weights logged: drill key -> entries oldest first.
+// Entries: { date, name, sets, top, volume }.
+export function weightHistory(sessions) {
+  const byDrill = new Map();
+  for (const session of byDate(attended(sessions))) {
+    for (const drill of session.drills || []) {
+      const sets = (drill.sets || []).filter(s => Number(s.weight) > 0);
+      if (!sets.length) continue;
+      const key = drill.drillId || drill.name;
+      const entry = {
+        date: session.date,
+        name: drill.name,
+        sets,
+        top: topSet(sets),
+        volume: sets.reduce((sum, s) => sum + Number(s.weight) * (Number(s.reps) || 0), 0),
+      };
+      byDrill.set(key, [...(byDrill.get(key) || []), entry]);
+    }
+  }
+  return byDrill;
+}
+
+// What he loaded this drill with last time, to prefill the next session.
+export function lastSetsFor(sessions, drill) {
+  const key = drill.drillId || drill.name;
+  const history = weightHistory(sessions).get(key);
+  return history ? history[history.length - 1] : null;
 }

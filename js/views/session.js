@@ -1,10 +1,11 @@
 // Log / edit a training session: drills done, skill ratings, notes, attached memos.
 import { db, uid, sessionTypes } from '../db.js';
-import { esc, $, $$, isoDate, weekStart, parseDate, toast } from '../util.js';
+import { esc, $, $$, isoDate, weekStart, parseDate, toast, toastAction, fmtSets, fmtDate } from '../util.js';
 import { CATEGORIES } from '../seed.js';
 import { page, catDot, openSheet, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
 import { memoCard, bindMemoCards, skillSuggestions } from './clients.js';
+import { lastSetsFor } from '../progress.js';
 
 export async function sessionFormView(clientId, sessionId) {
   const client = await db.get('clients', clientId);
@@ -13,6 +14,9 @@ export async function sessionFormView(clientId, sessionId) {
   let types = await sessionTypes();
   const s = existing || { id: uid(), clientId, date: isoDate(), type: types[0] || '', duration: 60, drills: [], ratings: {}, wentWell: '', workOn: '', privateNotes: '' };
   const drills = (await db.all('drills')).sort((a, b) => a.name.localeCompare(b.name));
+  const unit = await db.getMeta('weightUnit', 'lb');
+  const pastSessions = (await db.byClient('sessions', clientId)).filter(x => x.id !== s.id);
+  const openSets = new Set(); // which drills have their weights open
   const memos = existing ? (await db.byClient('memos', clientId)).filter(m => m.sessionId === s.id) : [];
   let saved = Boolean(existing);
 
@@ -21,6 +25,8 @@ export async function sessionFormView(clientId, sessionId) {
     back: `#/clients/${clientId}`,
     body: `
       <div class="muted small subhead">${esc(client.name)}</div>
+      ${s.cancelled ? `<div class="banner">🚫 <b>Cancelled</b>${s.cancelReason ? ` · ${esc(s.cancelReason)}` : ''} — this day doesn't count as a session.
+        <button type="button" class="btn ghost small" data-uncancel>Change to a logged session</button></div>` : ''}
       <form class="stack" data-form>
         <div class="grid-3">
           <label class="field"><span>Date</span><input type="date" name="date" value="${esc(s.date)}" required></label>
@@ -62,6 +68,7 @@ export async function sessionFormView(clientId, sessionId) {
         </fieldset>
 
         <button class="btn primary block" type="submit">Save session</button>
+        ${s.cancelled ? '' : '<button class="btn ghost block" type="button" data-cancelled>🚫 Client cancelled this session</button>'}
         ${existing ? '<button class="btn danger block" type="button" data-delete>Delete session</button>' : ''}
       </form>`,
   });
@@ -70,9 +77,52 @@ export async function sessionFormView(clientId, sessionId) {
   const drillList = $('[data-drills]', view);
 
   function renderDrills() {
-    drillList.innerHTML = s.drills.length
-      ? s.drills.map((d, i) => `<div class="drill-pill">${catDot(d.category)}<span class="grow">${esc(d.name)}</span><button type="button" class="icon-btn small" data-remove="${i}" aria-label="Remove">✕</button></div>`).join('')
-      : '<div class="muted small">No drills added.</div>';
+    if (!s.drills.length) {
+      drillList.innerHTML = '<div class="muted small">No drills added.</div>';
+      return;
+    }
+    drillList.innerHTML = s.drills.map((d, i) => {
+      const last = lastSetsFor(pastSessions, d);
+      const summary = fmtSets(d.sets, unit);
+      const open = openSets.has(i);
+      return `
+        <div class="drill-pill" data-drill="${i}">
+          <div class="row gap">
+            ${catDot(d.category)}
+            <button type="button" class="grow drill-name" data-toggle="${i}" aria-expanded="${open}">
+              ${esc(d.name)}
+              ${summary ? `<span class="muted small block-line">${esc(summary)}</span>` : ''}
+            </button>
+            <button type="button" class="icon-btn small" data-weights="${i}" title="Log weights" aria-label="Log weights for ${esc(d.name)}">🏋️</button>
+            <button type="button" class="icon-btn small" data-remove="${i}" aria-label="Remove ${esc(d.name)}">✕</button>
+          </div>
+          <div class="sets" ${open ? '' : 'hidden'}>
+            ${(d.sets || []).map((set, j) => `
+              <div class="set-row">
+                <span class="set-n">${j + 1}</span>
+                <input type="number" inputmode="decimal" step="any" min="0" placeholder="weight" value="${set.weight ?? ''}" data-w="${i}:${j}" aria-label="Set ${j + 1} weight">
+                <span class="unit">${esc(unit)}</span>
+                <input type="number" inputmode="numeric" min="0" placeholder="reps" value="${set.reps ?? ''}" data-r="${i}:${j}" aria-label="Set ${j + 1} reps">
+                <button type="button" class="icon-btn small" data-delset="${i}:${j}" aria-label="Remove set ${j + 1}">✕</button>
+              </div>`).join('')}
+            <div class="row gap wrap">
+              <button type="button" class="btn ghost small" data-addset="${i}">+ Set</button>
+              ${last ? `<span class="muted small">Last (${fmtDate(last.date, { month: 'short', day: 'numeric' })}): ${esc(fmtSets(last.sets, unit))}</span>
+                        <button type="button" class="btn ghost small" data-repeat="${i}">Repeat</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Strength work opens its weights straight away; everything else stays out of the way until asked.
+  function addDrill(entry) {
+    s.drills.push(entry);
+    if (entry.category === 'Strength') {
+      const last = lastSetsFor(pastSessions, entry);
+      entry.sets = (last?.sets || [{ weight: '', reps: '' }]).map(x => ({ weight: '', reps: x.reps ?? '' }));
+      openSets.add(s.drills.length - 1);
+    }
   }
 
   async function renderPlanSuggestions() {
@@ -87,7 +137,7 @@ export async function sessionFormView(clientId, sessionId) {
       const btn = e.target.closest('button');
       if (!btn) return;
       const picks = btn.dataset.planAll !== undefined ? fresh : [blocks[Number(btn.dataset.planI)]];
-      for (const b of picks) s.drills.push({ drillId: b.drillId, name: b.name, category: b.category });
+      for (const b of picks) addDrill({ drillId: b.drillId, name: b.name, category: b.category });
       renderDrills();
       renderPlanSuggestions();
     };
@@ -97,17 +147,57 @@ export async function sessionFormView(clientId, sessionId) {
   renderPlanSuggestions();
   form.date.addEventListener('change', renderPlanSuggestions);
 
+  const pos = key => key.split(':').map(Number);
+
   drillList.addEventListener('click', e => {
-    const btn = e.target.closest('[data-remove]');
+    const btn = e.target.closest('button');
     if (!btn) return;
-    s.drills.splice(Number(btn.dataset.remove), 1);
+    const d = btn.dataset;
+    if (d.remove !== undefined) {
+      const i = Number(d.remove);
+      const [removed] = s.drills.splice(i, 1);
+      openSets.delete(i);
+      toastAction(`Removed ${removed.name}`, 'Undo', () => {
+        s.drills.splice(i, 0, removed);
+        renderDrills();
+        renderPlanSuggestions();
+      });
+    } else if (d.toggle !== undefined || d.weights !== undefined) {
+      const i = Number(d.toggle ?? d.weights);
+      if (openSets.has(i)) openSets.delete(i);
+      else {
+        openSets.add(i);
+        if (!s.drills[i].sets?.length) s.drills[i].sets = [{ weight: '', reps: '' }];
+      }
+    } else if (d.addset !== undefined) {
+      const drill = s.drills[Number(d.addset)];
+      const previous = drill.sets?.[drill.sets.length - 1];
+      (drill.sets ||= []).push({ weight: previous?.weight ?? '', reps: previous?.reps ?? '' });
+    } else if (d.delset !== undefined) {
+      const [i, j] = pos(d.delset);
+      s.drills[i].sets.splice(j, 1);
+    } else if (d.repeat !== undefined) {
+      const i = Number(d.repeat);
+      s.drills[i].sets = lastSetsFor(pastSessions, s.drills[i]).sets.map(x => ({ weight: x.weight, reps: x.reps }));
+    } else {
+      return;
+    }
     renderDrills();
     renderPlanSuggestions();
   });
 
+  // Weights and reps save straight onto the drill as he types.
+  drillList.addEventListener('input', e => {
+    const { w, r } = e.target.dataset;
+    if (!w && !r) return;
+    const [i, j] = pos(w || r);
+    const value = e.target.value === '' ? '' : Number(e.target.value);
+    s.drills[i].sets[j][w ? 'weight' : 'reps'] = value;
+  });
+
   $('[data-library]', view).addEventListener('change', e => {
     const d = drills.find(x => x.id === e.target.value);
-    if (d) s.drills.push({ drillId: d.id, name: d.name, category: d.category });
+    if (d) addDrill({ drillId: d.id, name: d.name, category: d.category });
     e.target.value = '';
     renderDrills();
   });
@@ -115,7 +205,7 @@ export async function sessionFormView(clientId, sessionId) {
   $('[data-add-custom]', view).addEventListener('click', () => {
     const input = $('[data-custom]', view);
     if (!input.value.trim()) return;
-    s.drills.push({ drillId: null, name: input.value.trim(), category: 'Other' });
+    addDrill({ drillId: null, name: input.value.trim(), category: 'Other' });
     input.value = '';
     renderDrills();
   });
@@ -198,6 +288,11 @@ export async function sessionFormView(clientId, sessionId) {
 
   async function save() {
     const f = new FormData(form);
+    for (const drill of s.drills) {
+      const sets = (drill.sets || []).filter(set => set.weight !== '' || set.reps !== '');
+      if (sets.length) drill.sets = sets;
+      else delete drill.sets;
+    }
     Object.assign(s, {
       date: f.get('date'),
       type: s.type,
@@ -233,6 +328,21 @@ export async function sessionFormView(clientId, sessionId) {
   });
 
   bindMemoCards(view, memos, () => sessionFormView(clientId, s.id));
+
+  $('[data-cancelled]', view)?.addEventListener('click', async () => {
+    if (!form.reportValidity()) return;
+    await save();
+    await db.put('sessions', Object.assign(s, { cancelled: true, cancelReason: 'Client cancelled', duration: 0 }));
+    toast('Marked as cancelled');
+    location.hash = `#/clients/${clientId}`;
+  });
+
+  $('[data-uncancel]', view)?.addEventListener('click', async () => {
+    delete s.cancelled;
+    delete s.cancelReason;
+    await db.put('sessions', s);
+    sessionFormView(clientId, s.id);
+  });
 
   $('[data-delete]', view)?.addEventListener('click', async () => {
     if (!confirm('Delete this session?')) return;

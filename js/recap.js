@@ -1,15 +1,17 @@
 // Template recap writer. Pure function: data in, plain-text email out.
 // This is the seam where an AI writer can be swapped in later — same inputs, same output shape.
-import { fmtDate, fmtRange, firstName, parseDate, addDays, DAY_NAMES } from './util.js';
-import { byDate, inRange, skillAverage, focusAreas, strengths, trend, skillSeries } from './progress.js';
+import { fmtDate, fmtRange, firstName, parseDate, addDays, DAY_NAMES, fmtSets } from './util.js';
+import { byDate, inRange, skillAverage, focusAreas, strengths, trend, skillSeries, attended, cancelled, weightHistory } from './progress.js';
 
 const one = n => (Math.round(n * 10) / 10).toFixed(1);
 
 export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
   const days = Math.round((parseDate(to) - parseDate(from)) / 86400000) + 1;
-  const period = byDate(inRange(sessions, from, to));
-  const previous = inRange(sessions, addDays(from, -days), addDays(from, -1));
-  const upToNow = sessions.filter(s => s.date <= to);
+  const inPeriod = byDate(inRange(sessions, from, to));
+  const period = attended(inPeriod);
+  const missed = cancelled(inPeriod);
+  const previous = attended(inRange(sessions, addDays(from, -days), addDays(from, -1)));
+  const upToNow = attended(sessions.filter(s => s.date <= to));
   const lines = [];
 
   lines.push(`Hi ${firstName(client.name)},`, '');
@@ -18,7 +20,9 @@ export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
   // Sessions
   lines.push('SESSIONS');
   if (!period.length) {
-    lines.push("We didn't log any sessions in this stretch. Let's get back on the mats this week.");
+    lines.push(missed.length
+      ? "We didn't get a session in this stretch - let's get you back on the mats this week."
+      : "We didn't log any sessions in this stretch. Let's get back on the mats this week.");
   } else {
     const minutes = period.reduce((sum, s) => sum + (Number(s.duration) || 0), 0);
     lines.push(`You trained ${period.length} time${period.length === 1 ? '' : 's'}${minutes ? ` (${minutes} minutes total)` : ''}.`);
@@ -28,6 +32,29 @@ export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
     }
   }
   lines.push('');
+  if (missed.length) {
+    lines.push(missed.length === 1 ? 'CANCELLED' : `CANCELLED (${missed.length})`);
+    for (const s of missed) lines.push(`- ${fmtDate(s.date)}${s.cancelReason && s.cancelReason !== 'Client cancelled' ? ` - ${s.cancelReason.toLowerCase()}` : ''}`);
+    lines.push('');
+  }
+
+  // Weights, when there are any: this period's top set against the best before it.
+  const lifts = weightHistory(period);
+  if (lifts.size) {
+    const before = weightHistory(sessions.filter(s => s.date < from));
+    lines.push(`WEIGHTS (${settings.weightUnit || 'lb'})`);
+    for (const [key, entries] of lifts) {
+      const now = entries.at(-1);
+      const was = before.get(key)?.at(-1);
+      let change = '';
+      if (was?.top && now.top) {
+        const delta = Number(now.top.weight) - Number(was.top.weight);
+        change = delta > 0 ? ` (up ${delta} from ${was.top.weight})` : delta < 0 ? ` (down from ${was.top.weight})` : ' (same as last time)';
+      }
+      lines.push(`- ${now.name}: ${fmtSets(now.sets, settings.weightUnit || 'lb')}${change}`);
+    }
+    lines.push('');
+  }
 
   // Ratings
   const rated = (client.skills || [])
@@ -51,13 +78,14 @@ export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
   const strong = strengths(client, upToNow).filter(s => s.trend >= 0);
   if (wins.length || strong.length) {
     lines.push("WHAT'S WORKING");
-    for (const s of strong) lines.push(`- ${s.skill} is a real strength right now.`);
+    for (const s of strong) lines.push(`- Your ${s.skill.toLowerCase()} is looking sharp${s.trend > 0.25 ? ' and still climbing' : ''}.`);
     for (const w of wins) lines.push(`- ${w}`);
     lines.push('');
   }
 
   // Areas to sharpen
-  const focus = focusAreas(client, upToNow);
+  // Don't call the same skill a strength and a weakness in one email.
+  const focus = focusAreas(client, upToNow).filter(f => !strong.some(s => s.skill === f.skill));
   const workOn = period.map(s => s.workOn?.trim()).filter(Boolean);
   if (focus.length || workOn.length) {
     lines.push('AREAS TO SHARPEN');

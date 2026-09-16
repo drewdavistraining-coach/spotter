@@ -13,7 +13,7 @@ const BY_CLIENT = ['sessions', 'memos', 'plans', 'recaps'];
 
 // Meta rows that follow Drew across devices. Everything else in meta (sign-in, sync cursor, backup date,
 // seeded flag) belongs to this device only.
-export const SYNCED_META = ['sessionTypes', 'trainerName', 'recapClosing'];
+export const SYNCED_META = ['sessionTypes', 'trainerName', 'recapClosing', 'weightUnit'];
 
 let dbPromise;
 

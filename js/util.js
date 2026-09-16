@@ -84,3 +84,33 @@ export function toast(message) {
   setTimeout(() => el.classList.add('show'), 10);
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2400);
 }
+
+// Toast with a button, e.g. "Drill removed [Undo]". The action gets a few seconds.
+export function toastAction(message, label, action, ms = 7000) {
+  document.querySelector('.toast.with-action')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast with-action';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  el.append(text, btn);
+  document.body.append(el);
+  setTimeout(() => el.classList.add('show'), 10);
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  const timer = setTimeout(close, ms);
+  btn.addEventListener('click', () => { clearTimeout(timer); close(); action(); });
+}
+
+// Weights are stored as plain numbers; the unit is a single setting (see meta 'weightUnit').
+export function fmtSets(sets, unit = 'lb') {
+  const clean = (sets || []).filter(s => Number(s.weight) > 0 || Number(s.reps) > 0);
+  if (!clean.length) return '';
+  return clean.map(s => `${s.reps || '?'} × ${s.weight ? `${s.weight} ${unit}` : 'bw'}`).join(', ');
+}
+
+export function topSet(sets) {
+  const clean = (sets || []).filter(s => Number(s.weight) > 0);
+  return clean.length ? clean.reduce((a, b) => (Number(b.weight) > Number(a.weight) ? b : a)) : null;
+}
