@@ -40,6 +40,26 @@ h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
 h3 { font-size: 15px; margin-bottom: 10px; }
 [hidden] { display: none !important; }
 
+/* Opening animation: the ring and S draw themselves, then the name and Drew's slogan arrive. */
+#splash {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: var(--bg); animation: splash-out .45s ease 1.65s forwards;
+}
+#splash.done { display: none; }
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.splash-mark { overflow: visible; }
+.splash-ring { fill: none; stroke: var(--accent); stroke-width: 7; stroke-dasharray: 1; stroke-dashoffset: 1; transform-origin: 60px 60px; transform: rotate(-90deg); animation: draw .75s ease-out forwards; }
+.splash-s { fill: none; stroke: var(--text); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .6s ease-out .35s forwards; }
+.splash-name { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; opacity: 0; animation: rise-in .5s ease .7s forwards; }
+.splash-line { font-size: 14px; font-style: italic; color: var(--muted); opacity: 0; animation: rise-in .5s ease 1s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  #splash, .splash-ring, .splash-s, .splash-name, .splash-line { animation-duration: .01s; animation-delay: 0s; }
+  .splash-name, .splash-line { opacity: 1; }
+}
+
 /* Shell */
 #topbar {
   position: sticky; top: 0; z-index: 10;
@@ -267,8 +287,14 @@ details summary::-webkit-details-marker { display: none; }
 .day.cancelled { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 7%, var(--surface)); }
 .day.cancelled .block { opacity: .45; text-decoration: line-through; }
 .tag.good-tag { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
-.grip { cursor: grab; touch-action: none; color: var(--muted); }
-.block.lifted { background: var(--surface-2); border-radius: 10px; box-shadow: 0 8px 22px rgba(0, 0, 0, .45); transform: scale(1.02); }
+.grip { cursor: grab; touch-action: none; color: var(--muted); -webkit-touch-callout: none; }
+.block .icon-btn.small { width: 28px; height: 28px; }
+.block.dragging { opacity: .25; }
+.block.ghost {
+  background: var(--surface-2); border: 1px solid var(--accent); border-radius: 10px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .5); padding: 8px 6px 8px 2px;
+}
+body.dragging-block { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 .day-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-height: 30px; }
 .day-head .grow { flex-basis: 0; }
 .block { display: flex; align-items: center; gap: 8px; padding: 8px 0 8px 2px; border-top: 1px solid var(--line); }

@@ -78,6 +78,8 @@ export async function planView(clientId, week) {
             <button class="icon-btn small grip" data-grip aria-label="Drag to reorder ${esc(b.name)}" title="Drag to reorder">⠿</button>
             ${catDot(b.category)}
             <div class="grow"><div>${esc(b.name)}</div><input class="dose" value="${esc(b.dose)}" placeholder="sets / rounds" data-dose="${day}:${i}"></div>
+            <button class="icon-btn small" data-up="${day}:${i}" aria-label="Move ${esc(b.name)} up" title="Move up" ${day === 0 && i === 0 ? 'disabled' : ''}>↑</button>
+            <button class="icon-btn small" data-down="${day}:${i}" aria-label="Move ${esc(b.name)} down" title="Move down" ${day === 6 && i === blocks.length - 1 ? 'disabled' : ''}>↓</button>
             <button class="icon-btn small" data-swap="${day}:${i}" aria-label="Swap for a similar drill" title="Swap">⇄</button>
             <button class="icon-btn small" data-del="${day}:${i}" aria-label="Remove">✕</button>
           </div>`).join('')}
@@ -95,6 +97,22 @@ export async function planView(clientId, week) {
     if (btn.dataset.add) return pickDrill(Number(btn.dataset.add));
     if (btn.dataset.cancel) return cancelDay(Number(btn.dataset.cancel));
     if (btn.dataset.uncancel) return uncancelDay(Number(btn.dataset.uncancel));
+    if (btn.dataset.up || btn.dataset.down) {
+      const [d, i] = at(btn.dataset.up || btn.dataset.down);
+      const step = btn.dataset.up ? -1 : 1;
+      const [block] = plan.days[d].splice(i, 1);
+      const next = i + step;
+      if (next >= 0 && next <= plan.days[d].length) {
+        plan.days[d].splice(next, 0, block); // move within the day
+      } else {
+        // past the top or bottom of a day: hop to the next day that isn't cancelled
+        let target = d + step;
+        while (target >= 0 && target <= 6 && cancelledDays.has(addDays(ws, target))) target += step;
+        if (target < 0 || target > 6) plan.days[d].splice(i, 0, block); // nowhere to go: put it back
+        else if (step < 0) plan.days[target].push(block);
+        else plan.days[target].unshift(block);
+      }
+    }
     if (btn.dataset.del) {
       const [d, i] = at(btn.dataset.del);
       const [removed] = plan.days[d].splice(i, 1);
@@ -205,58 +223,84 @@ export async function planView(clientId, week) {
 
   // Drag a drill by its grip to reorder it, or drop it on another day. Pointer events so it works
   // the same with a finger on the iPhone and a mouse on the laptop.
+  // Drag a drill by its grip to reorder it, or drop it on another day. Pointer events tracked on the
+  // window (not the handle) because iOS Safari doesn't always capture the touch to the handle itself.
+  // A floating copy follows the finger so it's obvious what's being moved.
   function enableDrag(container) {
-    let dragging = null;
     container.addEventListener('pointerdown', e => {
       const grip = e.target.closest('[data-grip]');
       if (!grip || e.button > 0) return;
       e.preventDefault();
-      dragging = grip.closest('.block');
-      dragging.classList.add('lifted');
-      dragging.style.pointerEvents = 'none'; // so we can see what's underneath the finger
-      try { grip.setPointerCapture(e.pointerId); } catch { /* some browsers/synthetic events */ }
+
+      const block = grip.closest('.block');
+      const startBox = block.getBoundingClientRect();
+      const startY = e.clientY;
+      let moved = false;
+
+      // The copy that follows the finger.
+      const ghost = block.cloneNode(true);
+      ghost.classList.add('ghost');
+      Object.assign(ghost.style, {
+        position: 'fixed', left: `${startBox.left}px`, top: `${startBox.top}px`,
+        width: `${startBox.width}px`, margin: '0', pointerEvents: 'none', zIndex: '60',
+      });
+      document.body.append(ghost);
+      block.classList.add('dragging');
+      document.body.classList.add('dragging-block');
+
+      const moveTo = y => { ghost.style.transform = `translateY(${y - startY}px)`; };
+      moveTo(e.clientY);
 
       const move = ev => {
+        ev.preventDefault();
+        moved = true;
         const y = ev.clientY;
-        if (y < 90) window.scrollBy(0, -12);
-        else if (y > window.innerHeight - 90) window.scrollBy(0, 12);
-        const under = document.elementFromPoint(ev.clientX, Math.max(0, Math.min(y, window.innerHeight - 1)));
+        moveTo(y);
+        if (y < 100) window.scrollBy(0, -14);
+        else if (y > window.innerHeight - 100) window.scrollBy(0, 14);
+
+        const under = document.elementFromPoint(ev.clientX, Math.max(1, Math.min(y, window.innerHeight - 2)));
         if (!under) return;
         const overBlock = under.closest?.('.block');
-        if (overBlock && overBlock !== dragging) {
+        if (overBlock && overBlock !== block) {
           const box = overBlock.getBoundingClientRect();
-          overBlock.parentElement.insertBefore(dragging, y < box.top + box.height / 2 ? overBlock : overBlock.nextSibling);
+          overBlock.parentElement.insertBefore(block, y < box.top + box.height / 2 ? overBlock : overBlock.nextSibling);
           return;
         }
         const overDay = under.closest?.('.day');
-        if (overDay && !overDay.contains(dragging) && !overDay.classList.contains('cancelled')) overDay.append(dragging);
+        if (overDay && !overDay.contains(block) && !overDay.classList.contains('cancelled')) overDay.append(block);
       };
 
       const finish = async () => {
-        grip.removeEventListener('pointermove', move);
-        grip.removeEventListener('pointerup', finish);
-        grip.removeEventListener('pointercancel', finish);
-        dragging.classList.remove('lifted');
-        dragging.style.pointerEvents = '';
-        dragging = null;
-        // Rebuild the week from what's now on screen.
-        const before = plan.days.map(day => [...day]);
-        const rebuilt = emptyWeek();
-        for (const section of $$('.day', container)) {
-          for (const block of $$('.block', section)) {
-            const [d, i] = at(block.dataset.ref);
-            rebuilt[Number(section.dataset.day)].push(before[d][i]);
-          }
-        }
-        plan.days = rebuilt;
-        await save();
-        render();
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', finish);
+        window.removeEventListener('pointercancel', finish);
+        ghost.remove();
+        block.classList.remove('dragging');
+        document.body.classList.remove('dragging-block');
+        if (!moved) return; // a tap on the grip changes nothing
+        await saveOrder();
       };
 
-      grip.addEventListener('pointermove', move);
-      grip.addEventListener('pointerup', finish);
-      grip.addEventListener('pointercancel', finish);
+      window.addEventListener('pointermove', move, { passive: false });
+      window.addEventListener('pointerup', finish);
+      window.addEventListener('pointercancel', finish);
     });
+  }
+
+  // Rebuild the week from the order now on screen.
+  async function saveOrder() {
+    const before = plan.days.map(day => [...day]);
+    const rebuilt = emptyWeek();
+    for (const section of $$('.day', view)) {
+      for (const block of $$('.block', section)) {
+        const [d, i] = at(block.dataset.ref);
+        rebuilt[Number(section.dataset.day)].push(before[d][i]);
+      }
+    }
+    plan.days = rebuilt;
+    await save();
+    render();
   }
 
   enableDrag($('[data-days]', view));

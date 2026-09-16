@@ -53,6 +53,14 @@ async function firstRun() {
   await db.setMeta('seeded', true);
 }
 
+// The opening animation plays once per launch, then gets out of the way. A tap skips it.
+const splash = document.getElementById('splash');
+if (splash) {
+  const hideSplash = () => splash.classList.add('done');
+  setTimeout(hideSplash, matchMedia('(prefers-reduced-motion: reduce)').matches ? 100 : 2200);
+  splash.addEventListener('pointerdown', hideSplash);
+}
+
 window.addEventListener('hashchange', route);
 await firstRun();
 route();

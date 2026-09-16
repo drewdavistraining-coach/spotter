@@ -1,7 +1,7 @@
 // Offline support, network-first: when online, always load the latest files from the site
 // (so a push reaches the phone on its next open); when offline or the network is slow, use the cached copy.
 // Bump VERSION when you change files: that's what tells installed apps a new version exists.
-const VERSION = 'spotter-v7';
+const VERSION = 'spotter-v9';
 const NETWORK_TIMEOUT_MS = 3000; // slow gym wifi falls back to the cache instead of hanging
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png',
