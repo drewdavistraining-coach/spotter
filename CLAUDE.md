@@ -58,7 +58,9 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   `attended()` / `cancelled()` from `js/progress.js`, never a raw session list.
 - **Weights** live on each logged drill as `sets: [{ weight, reps }]`, in the unit from meta `weightUnit`
   ('lb' or 'kg' — numbers are never converted). `weightHistory()` and `lastSetsFor()` in `js/progress.js`
-  turn them into per-drill history; blank sets are stripped when a session is saved.
+  turn them into per-drill history; blank sets are stripped when a session is saved. Week-plan blocks carry
+  the same `sets` shape as a prescription: adding a planned drill to a session copies those numbers across,
+  and editing the session never changes the plan.
 - **Plan drag & drop** (`enableDrag()` in `js/views/plan.js`) uses pointer events and rebuilds the week from
   the DOM on drop. Destructive taps in the plan offer `toastAction(…, 'Undo', …)` instead of a confirm dialog.
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his

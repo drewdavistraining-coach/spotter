@@ -116,8 +116,13 @@ export async function sessionFormView(clientId, sessionId) {
   }
 
   // Strength work opens its weights straight away; everything else stays out of the way until asked.
-  function addDrill(entry) {
+  function addDrill(entry, plannedSets) {
     s.drills.push(entry);
+    if (plannedSets?.length) { // the week plan already prescribed weights
+      entry.sets = plannedSets.map(set => ({ weight: set.weight ?? '', reps: set.reps ?? '' }));
+      openSets.add(s.drills.length - 1);
+      return;
+    }
     if (entry.category === 'Strength') {
       const last = lastSetsFor(pastSessions, entry);
       entry.sets = (last?.sets || [{ weight: '', reps: '' }]).map(x => ({ weight: '', reps: x.reps ?? '' }));
@@ -137,7 +142,7 @@ export async function sessionFormView(clientId, sessionId) {
       const btn = e.target.closest('button');
       if (!btn) return;
       const picks = btn.dataset.planAll !== undefined ? fresh : [blocks[Number(btn.dataset.planI)]];
-      for (const b of picks) addDrill({ drillId: b.drillId, name: b.name, category: b.category });
+      for (const b of picks) addDrill({ drillId: b.drillId, name: b.name, category: b.category }, b.sets);
       renderDrills();
       renderPlanSuggestions();
     };

@@ -101,7 +101,9 @@ export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
   const planned = (nextPlan?.days || []).map((blocks, i) => ({ day: DAY_NAMES[i], blocks })).filter(d => d.blocks.length);
   if (planned.length) {
     lines.push(nextPlan.phase ? `THE PLAN FOR NEXT WEEK (${nextPlan.phase} week, ${nextPlan.theme} focus)` : 'THE PLAN FOR NEXT WEEK');
-    for (const d of planned) lines.push(`- ${d.day}: ${d.blocks.map(b => b.name).join(', ')}`);
+    for (const d of planned) {
+      lines.push(`- ${d.day}: ${d.blocks.map(b => b.name + (b.sets?.length ? ` (${fmtSets(b.sets, settings.weightUnit || 'lb')})` : '')).join(', ')}`);
+    }
     if (nextPlan.notes?.trim()) lines.push('', nextPlan.notes.trim());
     lines.push('');
   }

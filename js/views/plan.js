@@ -1,9 +1,9 @@
 // One client's weekly curriculum. Every change saves immediately.
 import { db, uid } from '../db.js';
-import { esc, $, $$, weekStart, addDays, fmtDate, fmtRange, DAY_NAMES, isoDate, toast, toastAction } from '../util.js';
+import { esc, $, $$, weekStart, addDays, fmtDate, fmtRange, DAY_NAMES, isoDate, toast, toastAction, fmtSets } from '../util.js';
 import { CATEGORIES, LEVEL_SHORT, INTENSITY } from '../seed.js';
 import { page, openSheet, catDot } from '../ui.js';
-import { focusAreas } from '../progress.js';
+import { focusAreas, lastSetsFor } from '../progress.js';
 import { autoBuildWeek, emptyWeek, blockFrom, varietyReport, cycleInfo, programFor, PHASES } from '../planner.js';
 
 export async function planView(clientId, week) {
@@ -20,6 +20,8 @@ export async function planView(clientId, week) {
   const focusSkills = focusAreas(client, sessions).map(f => f.skill);
   const program = programFor(client);
   const cycle = cycleInfo(client, ws);
+  const unit = await db.getMeta('weightUnit', 'lb');
+  const openWeights = new Set(); // "day:index" of blocks showing their weights
 
   const view = page({
     title: 'Week plan',
@@ -77,14 +79,43 @@ export async function planView(clientId, week) {
           <div class="block" data-pos="${day}:${i}" data-ref="${day}:${i}">
             <button class="icon-btn small grip" data-grip aria-label="Drag to reorder ${esc(b.name)}" title="Drag to reorder">⠿</button>
             ${catDot(b.category)}
-            <div class="grow"><div>${esc(b.name)}</div><input class="dose" value="${esc(b.dose)}" placeholder="sets / rounds" data-dose="${day}:${i}"></div>
+            <div class="grow">
+              <div>${esc(b.name)}</div>
+              <input class="dose" value="${esc(b.dose)}" placeholder="sets / rounds" data-dose="${day}:${i}">
+              ${b.sets?.length && !openWeights.has(`${day}:${i}`) ? `<div class="muted small">🏋️ ${esc(fmtSets(b.sets, unit))}</div>` : ''}
+              ${openWeights.has(`${day}:${i}`) ? weightsEditor(b, day, i) : ''}
+            </div>
+            <div class="block-actions">
+            <button class="icon-btn small ${b.sets?.length ? 'on' : ''}" data-weights="${day}:${i}" aria-label="Plan weights for ${esc(b.name)}" title="Plan weights">🏋️</button>
             <button class="icon-btn small" data-up="${day}:${i}" aria-label="Move ${esc(b.name)} up" title="Move up" ${day === 0 && i === 0 ? 'disabled' : ''}>↑</button>
             <button class="icon-btn small" data-down="${day}:${i}" aria-label="Move ${esc(b.name)} down" title="Move down" ${day === 6 && i === blocks.length - 1 ? 'disabled' : ''}>↓</button>
             <button class="icon-btn small" data-swap="${day}:${i}" aria-label="Swap for a similar drill" title="Swap">⇄</button>
             <button class="icon-btn small" data-del="${day}:${i}" aria-label="Remove">✕</button>
+            </div>
           </div>`).join('')}
       </section>`;
     }).join('');
+  }
+
+  // Weights he plans to put on the bar. Logging the session copies these across as the starting numbers.
+  function weightsEditor(block, day, i) {
+    const last = lastSetsFor(sessions, block);
+    return `
+      <div class="sets">
+        ${(block.sets || []).map((set, j) => `
+          <div class="set-row">
+            <span class="set-n">${j + 1}</span>
+            <input type="number" inputmode="decimal" step="any" min="0" placeholder="weight" value="${set.weight ?? ''}" data-w="${day}:${i}:${j}" aria-label="Set ${j + 1} weight">
+            <span class="unit">${esc(unit)}</span>
+            <input type="number" inputmode="numeric" min="0" placeholder="reps" value="${set.reps ?? ''}" data-r="${day}:${i}:${j}" aria-label="Set ${j + 1} reps">
+            <button class="icon-btn small" data-delset="${day}:${i}:${j}" aria-label="Remove set ${j + 1}">✕</button>
+          </div>`).join('')}
+        <div class="row gap wrap">
+          <button class="btn ghost small" data-addset="${day}:${i}">+ Set</button>
+          ${last ? `<span class="muted small">Last (${fmtDate(last.date, { month: 'short', day: 'numeric' })}): ${esc(fmtSets(last.sets, unit))}</span>
+                    <button class="btn ghost small" data-repeat="${day}:${i}">Repeat</button>` : ''}
+        </div>
+      </div>`;
   }
 
   render();
@@ -97,6 +128,30 @@ export async function planView(clientId, week) {
     if (btn.dataset.add) return pickDrill(Number(btn.dataset.add));
     if (btn.dataset.cancel) return cancelDay(Number(btn.dataset.cancel));
     if (btn.dataset.uncancel) return uncancelDay(Number(btn.dataset.uncancel));
+    if (btn.dataset.weights) {
+      const key = btn.dataset.weights;
+      const [d, i] = at(key);
+      if (openWeights.has(key)) openWeights.delete(key);
+      else {
+        openWeights.add(key);
+        if (!plan.days[d][i].sets?.length) plan.days[d][i].sets = [{ weight: '', reps: '' }];
+      }
+      return render(); // nothing to save yet
+    }
+    if (btn.dataset.addset) {
+      const [d, i] = at(btn.dataset.addset);
+      const sets = plan.days[d][i].sets;
+      sets.push({ ...(sets[sets.length - 1] || { weight: '', reps: '' }) });
+    }
+    if (btn.dataset.delset) {
+      const [d, i, j] = at(btn.dataset.delset);
+      plan.days[d][i].sets.splice(j, 1);
+      if (!plan.days[d][i].sets.length) delete plan.days[d][i].sets;
+    }
+    if (btn.dataset.repeat) {
+      const [d, i] = at(btn.dataset.repeat);
+      plan.days[d][i].sets = lastSetsFor(sessions, plan.days[d][i]).sets.map(x => ({ weight: x.weight, reps: x.reps }));
+    }
     if (btn.dataset.up || btn.dataset.down) {
       const [d, i] = at(btn.dataset.up || btn.dataset.down);
       const step = btn.dataset.up ? -1 : 1;
@@ -137,9 +192,16 @@ export async function planView(clientId, week) {
   });
 
   $('[data-days]', view).addEventListener('change', async e => {
-    if (!e.target.dataset.dose) return;
-    const [d, i] = at(e.target.dataset.dose);
-    plan.days[d][i].dose = e.target.value;
+    const { dose, w, r } = e.target.dataset;
+    if (dose) {
+      const [d, i] = at(dose);
+      plan.days[d][i].dose = e.target.value;
+    } else if (w || r) {
+      const [d, i, j] = at(w || r);
+      plan.days[d][i].sets[j][w ? 'weight' : 'reps'] = e.target.value === '' ? '' : Number(e.target.value);
+    } else {
+      return;
+    }
     await save();
   });
 
