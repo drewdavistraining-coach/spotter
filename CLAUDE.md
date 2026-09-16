@@ -1,7 +1,7 @@
 # Spotter — notes for Claude Code
 
 Spotter is Drew's coaching app: client profiles, session logs with skill ratings, voice memos, auto-built
-weekly programs, progress trends, and recap emails. Drew is an MMA fighter and personal trainer, not a
+weekly programs, weights, cancellations, progress trends, and recap emails. Drew is an MMA fighter and personal trainer, not a
 developer. Explain changes in plain language, and keep the code simple enough for him to follow.
 
 `README.md` covers architecture and how the planner works. `HANDOFF.md` covers setup and the day-to-day workflow.
@@ -78,7 +78,7 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   (matched by name), then uploads whatever the server doesn't have.
 - **Voice memo audio** lives in the private `memos` storage bucket at `<user id>/<memo id>.m4a`. The memo
   record stores `audioPath`, never the audio itself.
-- **Meta:** only `SYNCED_META` keys sync (`sessionTypes`, `trainerName`, `recapClosing`). Sign-in, the sync
+- **Meta:** only `SYNCED_META` keys sync (`sessionTypes`, `trainerName`, `recapClosing`, `weightUnit`). Sign-in, the sync
   cursor and the backup date stay on each device and never go into backup files.
 - **Database changes are run by hand** in the Supabase SQL Editor. Add a new `.sql` file under `supabase/`
   and keep every script safe to re-run. The Supabase GitHub integration is deliberately off.
