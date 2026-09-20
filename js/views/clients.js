@@ -211,7 +211,7 @@ export async function clientView(id, query) {
       toastAction(`${what} deleted`, 'Undo', async () => {
         await db.put(store, record);
         clientView(id, query);
-      }, 8000);
+      }, 12000);
       return;
     }
     const card = e.target.closest('[data-open]');
@@ -302,11 +302,11 @@ export function bindMemoCards(root, memos, refresh) {
       toastAction('Voice memo deleted', 'Undo', async () => {
         await db.put('memos', { ...memo, audioPath: undefined }); // re-upload the audio under a fresh path
         refresh();
-      }, 8000);
+      }, 12000);
       // Only clear the cloud copy once the undo window has closed.
       setTimeout(async () => {
         if (!(await db.get('memos', memo.id))) deleteAudio(memo);
-      }, 8500);
+      }, 12500);
     });
   }
 }

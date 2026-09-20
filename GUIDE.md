@@ -184,7 +184,9 @@ Most surprises make sense once you know these:
 2. **Plans and sessions keep their own copy.** Once a drill is in a week plan or a logged session, it holds
    its own name and numbers. Changing the library later doesn't rewrite it.
 3. **History is never rewritten.** Past weeks, logged sessions and sent recaps stay as they were.
-4. **Nothing is really gone until the Undo bar disappears.**
+4. **Nothing is really gone until the Undo bar disappears.** You get 12 seconds on anything deleted from a
+   client's timeline, and about 7 on a drill removed from a week plan or a session you're logging. Deleting
+   something else replaces the bar, so only the most recent delete can be taken back.
 
 ---
 
