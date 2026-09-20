@@ -195,6 +195,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .timeline { display: flex; flex-direction: column; gap: 8px; }
 .tl-date { font-size: 13px; font-weight: 700; margin-top: 8px; }
 .tl-item { display: flex; flex-direction: column; gap: 6px; }
+[data-open] { cursor: pointer; }
+.tl-item summary .row { align-items: flex-start; }
 .tl-kind { font-weight: 600; }
 .mini-ratings { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
 .mini-ratings b { color: var(--text); }

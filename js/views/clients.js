@@ -1,6 +1,6 @@
 // Client list, client profile form, and the client page (timeline + progress).
 import { db, uid } from '../db.js';
-import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration, initials, toast, DAY_NAMES, fmtSets } from '../util.js';
+import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration, initials, toast, toastAction, DAY_NAMES, fmtSets } from '../util.js';
 import { DISCIPLINES, DEFAULT_SKILLS, LEVELS, LEVEL_SHORT } from '../seed.js';
 import { programFor, cycleInfo, levelUpSuggestions } from '../planner.js';
 import { byDate, inRange, focusAreas, skillSummary, weeklyCounts, attended, cancelled, weightHistory } from '../progress.js';
@@ -196,6 +196,27 @@ export async function clientView(id, query) {
     openRecorder({ clientId: id, clientName: client.name, onSaved: () => clientView(id, query) }));
 
   bindMemoCards(view, memos, () => clientView(id, query));
+
+  $('[data-tab]', view).addEventListener('click', async e => {
+    const del = e.target.closest('[data-del-item]');
+    if (del) {
+      e.preventDefault();
+      e.stopPropagation();
+      const [store, recordId] = del.dataset.delItem.split(':');
+      const record = await db.get(store, recordId);
+      if (!record) return;
+      await db.del(store, recordId);
+      clientView(id, query);
+      const what = store === 'recaps' ? 'Recap' : record.cancelled ? 'Cancelled day' : 'Session';
+      toastAction(`${what} deleted`, 'Undo', async () => {
+        await db.put(store, record);
+        clientView(id, query);
+      }, 8000);
+      return;
+    }
+    const card = e.target.closest('[data-open]');
+    if (card && !e.target.closest('button, a, input, textarea, audio')) location.hash = card.dataset.open;
+  });
 }
 
 function timelineTab(client, sessions, memos, recaps, unit) {
@@ -220,21 +241,28 @@ function timelineTab(client, sessions, memos, recaps, unit) {
 function sessionCard(client, s, unit) {
   const ratings = client.skills.filter(k => typeof s.ratings?.[k] === 'number');
   return `
-    <a class="card tl-item" href="#/clients/${client.id}/sessions/${s.id}">
-      <div class="tl-kind">📝 ${esc(s.type || 'Session')}${s.duration ? ` · ${esc(s.duration)} min` : ''}</div>
+    <div class="card tl-item" data-open="#/clients/${client.id}/sessions/${s.id}">
+      <div class="row"><div class="tl-kind grow">📝 ${esc(s.type || 'Session')}${s.duration ? ` · ${esc(s.duration)} min` : ''}</div>
+        ${deleteButton('sessions', s.id, 'session')}</div>
       ${s.drills?.length ? `<div class="small">${s.drills.map(d => esc(d.name)).join(' · ')}</div>` : ''}
       ${(s.drills || []).filter(d => d.sets?.length).map(d => `<div class="small muted">🏋️ ${esc(d.name)}: ${esc(fmtSets(d.sets, unit))}</div>`).join('')}
       ${ratings.length ? `<div class="mini-ratings">${ratings.map(k => `<span>${esc(k)} <b>${s.ratings[k]}</b></span>`).join('')}</div>` : ''}
       ${s.wentWell ? `<div class="small good">✓ ${esc(s.wentWell)}</div>` : ''}
       ${s.workOn ? `<div class="small warn-text">↗ ${esc(s.workOn)}</div>` : ''}
-    </a>`;
+    </div>`;
+}
+
+// Timeline items delete with an Undo, rather than a confirm box.
+function deleteButton(store, id, label) {
+  return `<button class="icon-btn small" data-del-item="${store}:${id}" aria-label="Delete this ${label}" title="Delete">🗑</button>`;
 }
 
 function cancelledCard(client, s) {
   return `
-    <a class="card tl-item cancelled-item" href="#/clients/${client.id}/sessions/${s.id}">
-      <div class="tl-kind">🚫 Cancelled${s.cancelReason ? ` · ${esc(s.cancelReason)}` : ''}</div>
-    </a>`;
+    <div class="card tl-item cancelled-item" data-open="#/clients/${client.id}/sessions/${s.id}">
+      <div class="row"><div class="tl-kind grow">🚫 Cancelled${s.cancelReason ? ` · ${esc(s.cancelReason)}` : ''}</div>
+        ${deleteButton('sessions', s.id, 'cancelled day')}</div>
+    </div>`;
 }
 
 export function memoCard(m) {
@@ -250,7 +278,8 @@ export function memoCard(m) {
 function recapCard(r) {
   return `
     <details class="card tl-item">
-      <summary><span class="tl-kind">✉️ Recap sent</span> <span class="muted small">${esc(r.subject)}</span></summary>
+      <summary><div class="row"><span class="grow"><span class="tl-kind">✉️ Recap sent</span> <span class="muted small">${esc(r.subject)}</span></span>
+        ${deleteButton('recaps', r.id, 'recap')}</div></summary>
       <pre class="recap-pre">${esc(r.body)}</pre>
     </details>`;
 }
@@ -268,10 +297,16 @@ export function bindMemoCards(root, memos, refresh) {
       saveTimer = setTimeout(() => db.put('memos', { ...memo, note: e.target.value }), 400);
     });
     $('[data-del-memo]', card).addEventListener('click', async () => {
-      if (!confirm('Delete this voice memo?')) return;
-      deleteAudio(memo); // remove the synced audio file too, if there is one
       await db.del('memos', memo.id);
       refresh();
+      toastAction('Voice memo deleted', 'Undo', async () => {
+        await db.put('memos', { ...memo, audioPath: undefined }); // re-upload the audio under a fresh path
+        refresh();
+      }, 8000);
+      // Only clear the cloud copy once the undo window has closed.
+      setTimeout(async () => {
+        if (!(await db.get('memos', memo.id))) deleteAudio(memo);
+      }, 8500);
     });
   }
 }

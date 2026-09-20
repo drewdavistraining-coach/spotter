@@ -61,6 +61,9 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   turn them into per-drill history; blank sets are stripped when a session is saved. Week-plan blocks carry
   the same `sets` shape as a prescription: adding a planned drill to a session copies those numbers across,
   and editing the session never changes the plan.
+- **Timeline items delete with Undo** (sessions, cancelled days, memos, recaps): the record is handed to
+  `toastAction`, which puts it straight back. A memo's cloud audio is only removed once the undo window
+  has passed, and undoing clears `audioPath` so the audio re-uploads.
 - **Plan drag & drop** (`enableDrag()` in `js/views/plan.js`) uses pointer events and rebuilds the week from
   the DOM on drop. Destructive taps in the plan offer `toastAction(…, 'Undo', …)` instead of a confirm dialog.
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his
