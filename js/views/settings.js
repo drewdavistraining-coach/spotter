@@ -62,6 +62,17 @@ export async function settingsView() {
       </section>
 
       <section class="card stack">
+        <h3>Help</h3>
+        <p class="muted small">What every part of Spotter does, what happens when things clash, and answers to common questions.</p>
+        <a class="btn ghost block" href="#/help">📖 Guide &amp; FAQ</a>
+        <div class="row gap wrap">
+          <a class="btn ghost small" href="#/help?open=FAQ">FAQ</a>
+          <a class="btn ghost small" href="#/help?open=Cause">Cause and effect</a>
+          <a class="btn ghost small" href="#/help?open=What's changed">What's changed</a>
+        </div>
+      </section>
+
+      <section class="card stack">
         <h3>Danger zone</h3>
         <button class="btn danger block" data-wipe>Erase all data on this device</button>
         ${signedIn ? '<p class="muted small">Only erases this device and signs it out. Your synced data stays in the cloud and comes back when you sign in again.</p>' : ''}

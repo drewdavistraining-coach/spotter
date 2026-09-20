@@ -66,6 +66,9 @@ the latest code. `localhost` counts as a secure site, so the mic works there too
   has passed, and undoing clears `audioPath` so the audio re-uploads.
 - **Plan drag & drop** (`enableDrag()` in `js/views/plan.js`) uses pointer events and rebuilds the week from
   the DOM on drop. Destructive taps in the plan offer `toastAction(…, 'Undo', …)` instead of a confirm dialog.
+- **GUIDE.md is the user guide and the in-app Help screen** (`js/views/help.js` fetches and renders it, so
+  there's one copy). When you change behaviour, update GUIDE.md in the same commit — especially its
+  "Cause and effect" and "What's changed" tables.
 - Starter drills are in `js/seed.js`, but they only seed a fresh install. Drew's real library lives in his
   device's database, so changing `seed.js` doesn't change his existing drills.
 

@@ -9,6 +9,7 @@ import { recapView } from './views/recap.js';
 import { weekView } from './views/week.js';
 import { drillsView } from './views/drills.js';
 import { settingsView } from './views/settings.js';
+import { helpView } from './views/help.js';
 import { startSync } from './sync.js';
 
 const ID = '([a-z0-9]+)';
@@ -27,6 +28,7 @@ const routes = [
   [`/week(?:/${DATE})?`, weekView, 'week'],
   [`/drills`, drillsView, 'drills'],
   [`/settings`, settingsView, 'settings'],
+  [`/help`, helpView, 'settings'],
 ].map(([pattern, view, tab]) => [new RegExp(`^${pattern}$`), view, tab]);
 
 async function route() {

@@ -320,6 +320,23 @@ body.dragging-block { user-select: none; -webkit-user-select: none; cursor: grab
 /* Drills */
 .drill-row { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: inherit; width: 100%; cursor: pointer; }
 
+/* Help & FAQ */
+.help { display: flex; flex-direction: column; gap: 10px; }
+.help p, .help ul, .help ol { margin: 8px 0; }
+.help ul, .help ol { padding-left: 20px; }
+.help li { margin: 4px 0; }
+.help h4 { margin: 14px 0 4px; font-size: 14px; }
+.help blockquote { margin: 6px 0; padding-left: 12px; border-left: 3px solid var(--accent); font-style: italic; color: var(--muted); }
+.help-section > summary { font-weight: 700; padding: 2px 0; }
+.help-section[open] > summary { margin-bottom: 6px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.help code { background: var(--surface-2); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+.help a { text-decoration: underline; }
+.table-wrap { overflow-x: auto; margin: 8px 0; }
+.help table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.help th, .help td { text-align: left; vertical-align: top; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); }
+.help th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+.help td:first-child { min-width: 9rem; }
+
 /* Sheets */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease; }
 .sheet {

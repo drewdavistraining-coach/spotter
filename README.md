@@ -6,7 +6,8 @@ A coaching app for Drew: client profiles, session logs with skill ratings, voice
 auto-built weekly programs, weights logged per set, cancellations, progress trends, and recap emails. It's just for Drew for now. It works offline
 on each device and syncs between his phone and laptop through his own Supabase account.
 
-**[GUIDE.md](GUIDE.md)** is the plain-English tour of every feature, written for Drew.
+**[GUIDE.md](GUIDE.md)** is the plain-English tour of every feature, written for Drew. It's also the
+app's Help screen: Settings → Guide & FAQ renders this same file, so update it whenever behaviour changes.
 
 ## Run it locally
 
@@ -98,7 +99,7 @@ To add AI later: write a function with the same inputs that calls the Claude API
 | `js/recorder.js` | Voice memo recorder |
 | `js/backup.js` | Backup export / restore (a merge when signed in) |
 | `js/sync.js`, `supabase/schema.sql` | Phone ↔ laptop sync and the database setup it needs |
-| `js/views/*.js` | One file per screen |
+| `js/views/*.js` | One file per screen (`help.js` renders GUIDE.md) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline caching + installable app |
 
 ## Later (not built)

@@ -176,6 +176,62 @@ week of the block it belongs in.
 
 ---
 
+## The four rules behind everything
+
+Most surprises make sense once you know these:
+
+1. **The newest edit wins.** Two devices editing the same thing? Whichever was saved last is what you keep.
+2. **Plans and sessions keep their own copy.** Once a drill is in a week plan or a logged session, it holds
+   its own name and numbers. Changing the library later doesn't rewrite it.
+3. **History is never rewritten.** Past weeks, logged sessions and sent recaps stay as they were.
+4. **Nothing is really gone until the Undo bar disappears.**
+
+---
+
+## Cause and effect
+
+| What you see | Why | What to do |
+|---|---|---|
+| An edit you made on the phone isn't on the laptop | The phone hadn't synced yet — no signal, or the app wasn't opened | Open Spotter on the phone and wait for Settings → Sync to say "Up to date" |
+| An edit seems to have been undone | The same record was edited on both devices; the later save won | Redo it on one device and let it sync before editing on the other |
+| Settings says "3 changes will upload" | You're offline; the work is saved on the device | Nothing. It uploads when you reconnect |
+| A drill you deleted came back | Another device still had it and synced afterwards | Delete it once both devices are signed in and up to date |
+| You renamed a drill, but an old week still shows the old name | Past weeks keep the name they were planned with | Nothing — that's the history being accurate |
+| You deleted a drill from the library, but it's still in a week plan | Plans keep their own copy | Remove it from the plan itself with ✕ |
+| A client's progress chart changed after you deleted a session | Charts and recaps are built from sessions, so its ratings and weights went too | Tap Undo, or log the session again |
+| A cancelled day doesn't count as a session | Cancellations are deliberately kept out of training stats | Nothing — it still shows in the timeline, attendance % and recap |
+| A rating category disappeared from a client | It was removed from their list | Add it back — its past ratings return with it, nothing was lost |
+| Weights show the wrong unit | Switching lb ↔ kg only changes new entries; old numbers aren't converted | Re-enter the ones that matter, or switch the unit back |
+| This week is the wrong phase of the block | The phase is counted from "4-week cycle started" on their profile | Change that date to line the cycle up |
+| Auto-build keeps picking drills that are too easy or too hard | It reads the client's level in that discipline, and each drill's own level | Adjust the client's levels, or the drill's level in the Drills tab |
+| You changed a client's level but this week didn't change | Existing plans stay as they are | Auto-build the week again, or edit it by hand |
+| The session shows different weights than the plan | Planned weights are a prescription; the session records what really happened | Nothing — that's the point |
+| A session type you deleted still shows on an old session | Sessions keep the type they were logged with | Nothing |
+| "Spotter is open in another tab or window" | Two copies are open on a laptop and an update needs them closed | Close the other tab; the page carries on by itself |
+| The app doesn't have a change you just published | The phone hasn't picked it up yet | Close it fully and reopen, sometimes twice. Or tap "Spotter was updated" |
+| You erased the device and everything came back | You're signed in, so it re-downloaded from your account | Expected. To clear the cloud too, ask for help first |
+| You restored an old backup and newer entries are still there | With sync on, restoring merges instead of replacing; newest wins per record | Expected |
+| Sync says "Signed out — please sign in again" | The sign-in expired | Sign in again; your data on the device was untouched |
+
+---
+
+## What's changed since the first version, and what it means
+
+| Change | What it means for you |
+|---|---|
+| **Sync added** | Phone and laptop stay matched. A backup file is no longer the only way to move data — but restoring one now merges instead of replacing |
+| **Updates arrive on open** | No more waiting several opens for a change; if you're mid-screen you get a "tap to refresh" button instead of losing what you typed |
+| **Levels renamed** | "Foundations" is now "Beginner". Nothing about your clients changed |
+| **Rating categories per client** | Each client is scored only on what they train. Removing a category hides it, keeps its history |
+| **Session types editable** | Add your own types as you log, or manage the list in Settings |
+| **Rename drills in place** | The ✎ button. New name flows into this week and future weeks; past weeks keep the old one |
+| **Cancellations** | A cancelled day is a record, not a gap. It keeps its plan, stays out of training stats, and appears in the recap |
+| **Weights per set** | Logged per drill per client, so the Progress tab and recaps can show what changed. Plans can prescribe weights that carry into the session |
+| **Drag and drop, arrows, Undo** | Reorder a week by dragging a grip, or with ↑ / ↓ at the edges to hop days. A mis-tapped ✕ is recoverable |
+| **Delete from the timeline** | Any card can be removed, with Undo. Deleting a session also removes its ratings and weights from the charts |
+
+---
+
 ## FAQ
 
 **A client cancels — should I delete the day?**
