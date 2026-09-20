@@ -120,6 +120,8 @@ is untouched (unless a change deleted it, which is why rule 3 exists).
 
 ## Part 4: what's where
 
+Using the app day to day is covered in **[GUIDE.md](GUIDE.md)**.
+
 See `README.md` for the full file map and how the weekly program engine works. The places you'll
 most likely want to change:
 

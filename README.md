@@ -6,6 +6,8 @@ A coaching app for Drew: client profiles, session logs with skill ratings, voice
 auto-built weekly programs, weights logged per set, cancellations, progress trends, and recap emails. It's just for Drew for now. It works offline
 on each device and syncs between his phone and laptop through his own Supabase account.
 
+**[GUIDE.md](GUIDE.md)** is the plain-English tour of every feature, written for Drew.
+
 ## Run it locally
 
 ```bash
