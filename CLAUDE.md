@@ -33,11 +33,12 @@ developer. Explain changes in plain language, and keep the code simple enough fo
 ## Run locally
 
 ```bash
-python -m http.server 5174
+python tools/devserver.py 5179
 ```
 
-Then open http://localhost:5174. The service worker is skipped on localhost, so a refresh always shows
-the latest code. `localhost` counts as a secure site, so the mic works there too.
+Then open http://localhost:5179. Use this rather than `python -m http.server`: it sends no-cache headers,
+so a refresh really does run the file you just edited (plain http.server lets the browser keep old modules
+and makes testing lie to you). The service worker is skipped on localhost too. `localhost` counts as a secure site, so the mic works there too.
 
 ## Conventions
 

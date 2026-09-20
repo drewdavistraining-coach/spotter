@@ -67,6 +67,10 @@ than the week calls for is unlikely to appear — no hard sparring in a Learn we
 - **🏋️** — plan the weights: sets of weight × reps. It shows what that client last lifted on that drill,
   with a **Repeat** button. The icon turns orange once a drill has planned weights.
 - **✕** — remove, with **Undo** for a few seconds.
+- **⧉ Copy / 📋 Paste** — copy a whole day and paste it onto another. The copy keeps doses and planned
+  weights, and stays on the clipboard while you move between weeks or even to another client, so you can
+  repeat a session without rebuilding it. Pasting into a day that already has work asks whether to add to it
+  or replace it (replacing offers Undo). **Clear** on the copied bar puts it away.
 - **🚫 Cancel** — mark the day cancelled (see below).
 - **The bar at the top** shows the mix of categories, whether anything repeats from the last 2 weeks, and
   whether the week covers what they need work on.
@@ -213,6 +217,7 @@ Most surprises make sense once you know these:
 | The app doesn't have a change you just published | The phone hasn't picked it up yet | Close it fully and reopen, sometimes twice. Or tap "Spotter was updated" |
 | You erased the device and everything came back | You're signed in, so it re-downloaded from your account | Expected. To clear the cloud too, ask for help first |
 | You restored an old backup and newer entries are still there | With sync on, restoring merges instead of replacing; newest wins per record | Expected |
+| You pasted a day and the original changed too | It shouldn't — paste makes an independent copy | If you see this, tell Cam; it's a bug |
 | Sync says "Signed out — please sign in again" | The sign-in expired | Sign in again; your data on the device was untouched |
 
 ---
@@ -230,6 +235,7 @@ Most surprises make sense once you know these:
 | **Cancellations** | A cancelled day is a record, not a gap. It keeps its plan, stays out of training stats, and appears in the recap |
 | **Weights per set** | Logged per drill per client, so the Progress tab and recaps can show what changed. Plans can prescribe weights that carry into the session |
 | **Drag and drop, arrows, Undo** | Reorder a week by dragging a grip, or with ↑ / ↓ at the edges to hop days. A mis-tapped ✕ is recoverable |
+| **Copy and paste a day** | Build a session once and reuse it — another day, another week, another client. Doses and planned weights come with it |
 | **Delete from the timeline** | Any card can be removed, with Undo. Deleting a session also removes its ratings and weights from the charts |
 
 ---
@@ -262,6 +268,10 @@ future idea, not built.
 
 **How do I move a whole day's work to another day?**
 Drag each drill by its grip onto the other day, or use ↑ / ↓ at the edge of a day.
+
+**How do I repeat a session I already built?**
+Tap **⧉ Copy** on that day, then **📋 Paste** on the day you want it — including in a different week, or on
+another client. It's a copy, so changing one doesn't change the other.
 
 **The app didn't update.**
 Close it fully and reopen. If something still looks stale, open it once more.

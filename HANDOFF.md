@@ -50,10 +50,10 @@ like Documents.
 
 ```bash
 cd spotter
-python -m http.server 5174
+python tools/devserver.py
 ```
 
-(On a Mac, use `python3` instead of `python`.) Open http://localhost:5174 in your browser. That's
+(On a Mac, use `python3` instead of `python`.) Open http://localhost:5179 in your browser. That's
 your test copy. It has its own empty data, separate from your phone, so experiment freely. Press `Ctrl+C`
 in the terminal to stop it.
 
@@ -64,7 +64,7 @@ in the terminal to stop it.
 ### The loop
 
 1. **Get the latest code:** `git pull`
-2. **Run it:** `python -m http.server 5174` and open http://localhost:5174
+2. **Run it:** `python tools/devserver.py` and open http://localhost:5179
 3. **Make the change.** Either edit the files yourself, or open a second terminal in the `spotter` folder,
    run `claude`, and describe what you want. For example: *"Add a 'Clinch work' category to the drill library"*
    or *"Make the recap email mention how many rounds of sparring they did."* The `CLAUDE.md` file in this

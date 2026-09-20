@@ -22,6 +22,8 @@ export async function planView(clientId, week) {
   const cycle = cycleInfo(client, ws);
   const unit = await db.getMeta('weightUnit', 'lb');
   const openWeights = new Set(); // "day:index" of blocks showing their weights
+  // A copied day waits in meta, so it survives moving to another week — or another client.
+  let clipboard = await db.getMeta('planClipboard');
 
   const view = page({
     title: 'Week plan',
@@ -45,6 +47,7 @@ export async function planView(clientId, week) {
         ${lastWeek ? '<button class="btn ghost" data-copy>Copy last week</button>' : ''}
         <button class="btn ghost" data-clear>Clear</button>
       </div>
+      <div data-clipboard></div>
       <section class="card variety" data-variety></section>
       <div data-days></div>
       <label class="field"><span>Notes for this week</span><textarea rows="2" data-notes placeholder="Included under the plan in their recap">${esc(plan.notes)}</textarea></label>`,
@@ -53,6 +56,11 @@ export async function planView(clientId, week) {
   const save = () => db.put('plans', plan);
 
   function render() {
+    $('[data-clipboard]', view).innerHTML = clipboard
+      ? `<div class="banner row gap wrap"><span class="grow">📋 Copied: <b>${esc(clipboard.label)}</b> — tap Paste on any day${clipboard.blocks.length === 1 ? '' : ` (${clipboard.blocks.length} drills)`}</span>
+           <button class="btn ghost small" data-clear-clip>Clear</button></div>`
+      : '';
+
     const report = varietyReport(plan, plans, drills, focusSkills);
     $('[data-variety]', view).innerHTML = report.total ? `
       <div class="cat-bar">${CATEGORIES.concat('Other').filter(c => report.categories[c]).map(c => `<span data-cat="${esc(c)}" style="flex:${report.categories[c]}" title="${esc(c)}: ${report.categories[c]}"></span>`).join('')}</div>
@@ -73,6 +81,8 @@ export async function planView(clientId, week) {
           ${off
             ? `<button class="btn ghost small" data-uncancel="${day}">Undo cancel</button>`
             : `<button class="btn ghost small" data-add="${day}">+ Drill</button>
+               ${blocks.length ? `<button class="btn ghost small" data-copy-day="${day}" title="Copy this day">⧉ Copy</button>` : ''}
+               ${clipboard ? `<button class="btn ghost small" data-paste-day="${day}" title="Paste ${esc(clipboard.label)}">📋 Paste</button>` : ''}
                <button class="btn ghost small" data-cancel="${day}" title="Client cancelled this day">🚫 Cancel</button>`}
         </div>
         ${blocks.map((b, i) => `
@@ -126,6 +136,17 @@ export async function planView(clientId, week) {
     const btn = e.target.closest('button');
     if (!btn) return;
     if (btn.dataset.add) return pickDrill(Number(btn.dataset.add));
+    if (btn.dataset.copyDay) {
+      const day = Number(btn.dataset.copyDay);
+      clipboard = {
+        label: `${client.name} · ${DAY_NAMES[day]} ${fmtDate(addDays(ws, day), { month: 'short', day: 'numeric' })}`,
+        blocks: structuredClone(plan.days[day]),
+      };
+      await db.setMeta('planClipboard', clipboard);
+      toast(`${DAY_NAMES[day]} copied — tap Paste on another day`);
+      return render();
+    }
+    if (btn.dataset.pasteDay) return pasteDay(Number(btn.dataset.pasteDay));
     if (btn.dataset.cancel) return cancelDay(Number(btn.dataset.cancel));
     if (btn.dataset.uncancel) return uncancelDay(Number(btn.dataset.uncancel));
     if (btn.dataset.weights) {
@@ -205,6 +226,13 @@ export async function planView(clientId, week) {
     await save();
   });
 
+  $('[data-clipboard]', view).addEventListener('click', async e => {
+    if (!e.target.closest('[data-clear-clip]')) return;
+    clipboard = null;
+    await db.del('meta', 'planClipboard');
+    render();
+  });
+
   $('[data-notes]', view).addEventListener('change', async e => { plan.notes = e.target.value; await save(); });
 
   $('[data-copy]', view)?.addEventListener('click', async () => {
@@ -247,6 +275,38 @@ export async function planView(clientId, week) {
       },
     });
   });
+
+  // Pasting into an empty day just drops it in; into a day that already has work, ask first.
+  async function pasteDay(day) {
+    const copied = () => structuredClone(clipboard.blocks);
+    const apply = async blocks => {
+      plan.days[day] = blocks;
+      await save();
+      render();
+      toast(`Pasted into ${DAY_NAMES[day]}`);
+    };
+    if (!plan.days[day].length) return apply(copied());
+    openSheet({
+      title: `Paste into ${DAY_NAMES[day]}`,
+      body: `
+        <p class="small muted">${DAY_NAMES[day]} already has ${plan.days[day].length} drill${plan.days[day].length === 1 ? '' : 's'}.</p>
+        <button class="btn primary block" data-paste-add>Add to the end</button>
+        <button class="btn ghost block" data-paste-replace>Replace what's there</button>`,
+      onMount: (el, close) => {
+        $('[data-paste-add]', el).addEventListener('click', async () => { close(); await apply([...plan.days[day], ...copied()]); });
+        $('[data-paste-replace]', el).addEventListener('click', async () => {
+          const previous = structuredClone(plan.days[day]);
+          close();
+          await apply(copied());
+          toastAction(`Replaced ${DAY_NAMES[day]}`, 'Undo', async () => {
+            plan.days[day] = previous;
+            await save();
+            render();
+          });
+        });
+      },
+    });
+  }
 
   const CANCEL_REASONS = ['Client cancelled', 'Illness', 'Injury', 'Work', 'Travel', 'No-show', 'Coach cancelled'];
 

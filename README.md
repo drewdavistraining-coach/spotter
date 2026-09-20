@@ -12,10 +12,11 @@ app's Help screen: Settings → Guide & FAQ renders this same file, so update it
 ## Run it locally
 
 ```bash
-python -m http.server 5174 --directory C:/Users/Camer/spotter
+python tools/devserver.py 5179
 ```
 
-Then open http://localhost:5174. There's no build step: edit a file, refresh.
+Then open http://localhost:5179. There's no build step: edit a file, refresh. (`tools/devserver.py` is
+`http.server` with no-cache headers, so refreshes always run the latest file.)
 
 ## Put it on his iPhone
 
