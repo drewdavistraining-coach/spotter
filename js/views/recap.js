@@ -8,9 +8,10 @@ import { byDate, inRange } from '../progress.js';
 export async function recapView(clientId) {
   const client = await db.get('clients', clientId);
   if (!client) return (location.hash = '#/');
-  const [sessions, memos, plans, recaps, trainerName, recapClosing, weightUnit] = await Promise.all([
+  const [sessions, memos, plans, recaps, awards, trainerName, recapClosing, weightUnit] = await Promise.all([
     db.byClient('sessions', clientId), db.byClient('memos', clientId), db.byClient('plans', clientId),
-    db.byClient('recaps', clientId), db.getMeta('trainerName', ''), db.getMeta('recapClosing', 'Keep putting in the work - see you on the mats.'),
+    db.byClient('recaps', clientId), db.byClient('awards', clientId),
+    db.getMeta('trainerName', ''), db.getMeta('recapClosing', 'Keep putting in the work - see you on the mats.'),
     db.getMeta('weightUnit', 'lb'),
   ]);
   const today = isoDate();
@@ -51,7 +52,7 @@ export async function recapView(clientId) {
 
   function generate() {
     const nextPlan = plans.find(p => p.weekStart === addDays(weekStart(to.value), 7));
-    const recap = buildRecap({ client, sessions, from: from.value, to: to.value, nextPlan, settings: { trainerName, recapClosing, weightUnit } });
+    const recap = buildRecap({ client, sessions, awards, from: from.value, to: to.value, nextPlan, settings: { trainerName, recapClosing, weightUnit } });
     subject.value = recap.subject;
     body.value = recap.body;
     renderPrivate();

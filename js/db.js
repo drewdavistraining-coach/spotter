@@ -7,9 +7,9 @@ import { SESSION_TYPES } from './seed.js';
 // "outbox" store in the same transaction. The sync loop uploads the outbox and pulls other devices' changes,
 // writing them back with { fromSync: true } so they aren't re-uploaded.
 const DB_NAME = 'spotter';
-const DB_VERSION = 2; // v2 added the outbox store
-export const STORES = ['clients', 'sessions', 'memos', 'plans', 'recaps', 'drills', 'meta'];
-const BY_CLIENT = ['sessions', 'memos', 'plans', 'recaps'];
+const DB_VERSION = 3; // v2 added the outbox store, v3 the awards store
+export const STORES = ['clients', 'sessions', 'memos', 'plans', 'recaps', 'drills', 'awards', 'meta'];
+const BY_CLIENT = ['sessions', 'memos', 'plans', 'recaps', 'awards'];
 
 // Meta rows that follow Drew across devices. Everything else in meta (sign-in, sync cursor, backup date,
 // seeded flag) belongs to this device only.

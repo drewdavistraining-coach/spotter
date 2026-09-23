@@ -124,6 +124,35 @@ When a discipline's ratings have averaged 4+ for a month, their profile suggests
 
 ---
 
+## Accolades and milestones
+
+Spotter keeps track of the things worth celebrating, and you can add your own.
+
+**It works these out on its own:**
+
+- **Session counts** — first session, then 5, 10, 25, 50, 75, 100, 150, 200 and on up.
+- **Weight PRs** — when a top set beats anything that drill has seen before. Only the current record for
+  each drill is kept, so a client adding 5 lb a week doesn't collect a trophy every session.
+- **Streaks** — 4, 8, 12, 26 and 52 weeks in a row without missing a week.
+- **Anniversaries** — a year at a time, counted from their start date or first session, whichever came first.
+
+**You add the rest** with the **🏆 Accolade** button on their profile (or **+ Accolade** on the Progress
+tab): what happened, the date, a badge, and an optional note. First amateur fight, a belt, a weight cut —
+anything Spotter can't know about.
+
+**Where they turn up:**
+
+- a banner on their profile showing the most recent one
+- the **Milestones** card at the top of the Progress tab
+- their timeline, on the day it happened
+- their recap, as a **MILESTONES** section
+- a little celebration when you save a session that crosses one ("🏅 100 sessions together!")
+
+The automatic ones are worked out fresh every time, so they stay honest: edit or delete a session and they
+adjust. Your own accolades are records like anything else, so they can be deleted (with Undo) from the timeline.
+
+---
+
 ## Recaps
 
 Pick a date range (last 7 / 14 / 30 days, or since the last recap) and Spotter drafts the email:
@@ -218,6 +247,8 @@ Most surprises make sense once you know these:
 | You erased the device and everything came back | You're signed in, so it re-downloaded from your account | Expected. To clear the cloud too, ask for help first |
 | You restored an old backup and newer entries are still there | With sync on, restoring merges instead of replacing; newest wins per record | Expected |
 | You pasted a day and the original changed too | It shouldn't — paste makes an independent copy | If you see this, tell Cam; it's a bug |
+| A PR milestone vanished | Milestones are recalculated from the sessions, and only the standing record per drill is kept. Deleting or editing the session that set it removes it | Nothing, unless the session shouldn't have been changed — then Undo |
+| Only one PR shows for a drill that's been climbing for months | By design: the current record, not every increase | The full history is in the Weights card on the Progress tab |
 | Sync says "Signed out — please sign in again" | The sign-in expired | Sign in again; your data on the device was untouched |
 
 ---
@@ -236,6 +267,7 @@ Most surprises make sense once you know these:
 | **Weights per set** | Logged per drill per client, so the Progress tab and recaps can show what changed. Plans can prescribe weights that carry into the session |
 | **Drag and drop, arrows, Undo** | Reorder a week by dragging a grip, or with ↑ / ↓ at the edges to hop days. A mis-tapped ✕ is recoverable |
 | **Copy and paste a day** | Build a session once and reuse it — another day, another week, another client. Doses and planned weights come with it |
+| **Accolades and milestones** | Session counts, PRs, streaks and anniversaries appear on their own; you add the ones only you know about. They show on the profile, Progress tab, timeline and recaps |
 | **Delete from the timeline** | Any card can be removed, with Undo. Deleting a session also removes its ratings and weights from the charts |
 
 ---
@@ -268,6 +300,9 @@ future idea, not built.
 
 **How do I move a whole day's work to another day?**
 Drag each drill by its grip onto the other day, or use ↑ / ↓ at the edge of a day.
+
+**How do I record something like a first fight win or a belt?**
+Open the client and tap **🏆 Accolade**. It lands on their timeline and in their next recap.
 
 **How do I repeat a session I already built?**
 Tap **⧉ Copy** on that day, then **📋 Paste** on the day you want it — including in a different week, or on

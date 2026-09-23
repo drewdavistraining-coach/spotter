@@ -6,6 +6,7 @@ import { page, catDot, openSheet, listEditor } from '../ui.js';
 import { openRecorder } from '../recorder.js';
 import { memoCard, bindMemoCards, skillSuggestions } from './clients.js';
 import { lastSetsFor } from '../progress.js';
+import { milestonesFor, newlyEarned } from '../milestones.js';
 
 export async function sessionFormView(clientId, sessionId) {
   const client = await db.get('clients', clientId);
@@ -313,8 +314,12 @@ export async function sessionFormView(clientId, sessionId) {
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
+    const awards = await db.byClient('awards', clientId);
+    const before = milestonesFor({ client, sessions: pastSessions, awards, unit });
     await save();
-    toast('Session saved');
+    const after = milestonesFor({ client, sessions: [...pastSessions, s], awards, unit });
+    const earned = newlyEarned(before, after);
+    toast(earned.length ? `${earned[0].icon} ${earned[0].title}!` : 'Session saved');
     location.hash = `#/clients/${clientId}`;
   });
 

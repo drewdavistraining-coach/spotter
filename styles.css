@@ -161,6 +161,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 
 .banner { display: block; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--warn) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); font-size: 13px; }
 .banner a { text-decoration: underline; }
+.banner.trophy { background: color-mix(in srgb, var(--warn) 10%, var(--surface)); }
 
 .empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 .empty-icon { font-size: 40px; }
@@ -180,7 +181,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .profile { display: flex; gap: 14px; align-items: flex-start; }
 .goal { font-weight: 600; }
 
-.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; }
 .action {
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
@@ -205,6 +206,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 details summary { cursor: pointer; list-style: none; }
 details summary::-webkit-details-marker { display: none; }
 .recap-pre { white-space: pre-wrap; font: 13px/1.5 inherit; font-family: inherit; color: var(--muted); margin: 8px 0 0; }
+
+/* Milestones */
+.milestone { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+.milestone:first-of-type { border-top: 0; }
+.milestone .m-icon { font-size: 20px; line-height: 1.2; }
+.milestone .m-title { font-weight: 600; }
+.trophy-item { border-color: color-mix(in srgb, var(--warn) 30%, var(--line)); }
 
 /* Progress */
 .focus { border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); }

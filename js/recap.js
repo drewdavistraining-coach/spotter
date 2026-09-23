@@ -2,10 +2,11 @@
 // This is the seam where an AI writer can be swapped in later — same inputs, same output shape.
 import { fmtDate, fmtRange, firstName, parseDate, addDays, DAY_NAMES, fmtSets } from './util.js';
 import { byDate, inRange, skillAverage, focusAreas, strengths, trend, skillSeries, attended, cancelled, weightHistory } from './progress.js';
+import { milestonesFor, milestonesInRange } from './milestones.js';
 
 const one = n => (Math.round(n * 10) / 10).toFixed(1);
 
-export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
+export function buildRecap({ client, sessions, awards = [], from, to, nextPlan, settings }) {
   const days = Math.round((parseDate(to) - parseDate(from)) / 86400000) + 1;
   const inPeriod = byDate(inRange(sessions, from, to));
   const period = attended(inPeriod);
@@ -35,6 +36,18 @@ export function buildRecap({ client, sessions, from, to, nextPlan, settings }) {
   if (missed.length) {
     lines.push(missed.length === 1 ? 'CANCELLED' : `CANCELLED (${missed.length})`);
     for (const s of missed) lines.push(`- ${fmtDate(s.date)}${s.cancelReason && s.cancelReason !== 'Client cancelled' ? ` - ${s.cancelReason.toLowerCase()}` : ''}`);
+    lines.push('');
+  }
+
+  // Anything worth celebrating that happened in this stretch.
+  const milestones = milestonesInRange(
+    milestonesFor({ client, sessions, awards, unit: settings.weightUnit || 'lb' }),
+    from,
+    to,
+  );
+  if (milestones.length) {
+    lines.push('MILESTONES');
+    for (const m of [...milestones].reverse()) lines.push(`- ${m.icon} ${m.title}${m.detail ? ` ${m.detail}` : ''}`);
     lines.push('');
   }
 

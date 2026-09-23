@@ -62,6 +62,9 @@ and makes testing lie to you). The service worker is skipped on localhost too. `
   turn them into per-drill history; blank sets are stripped when a session is saved. Week-plan blocks carry
   the same `sets` shape as a prescription: adding a planned drill to a session copies those numbers across,
   and editing the session never changes the plan.
+- **Milestones** (`js/milestones.js`): session counts, standing weight PRs, streaks and anniversaries are
+  computed from sessions every time (never stored, so they stay correct when sessions change). Accolades
+  Drew adds himself live in the `awards` store and are deletable like any record.
 - **Timeline items delete with Undo** (sessions, cancelled days, memos, recaps): the record is handed to
   `toastAction`, which puts it straight back. A memo's cloud audio is only removed once the undo window
   has passed, and undoing clears `audioPath` so the audio re-uploads.

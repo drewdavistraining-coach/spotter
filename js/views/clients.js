@@ -4,9 +4,10 @@ import { esc, $, $$, isoDate, weekStart, addDays, daysAgo, fmtDate, fmtDuration,
 import { DISCIPLINES, DEFAULT_SKILLS, LEVELS, LEVEL_SHORT } from '../seed.js';
 import { programFor, cycleInfo, levelUpSuggestions } from '../planner.js';
 import { byDate, inRange, focusAreas, skillSummary, weeklyCounts, attended, cancelled, weightHistory } from '../progress.js';
-import { page, sparkline, trendArrow, emptyState, listEditor } from '../ui.js';
+import { page, sparkline, trendArrow, emptyState, listEditor, openSheet } from '../ui.js';
 import { openRecorder } from '../recorder.js';
 import { deleteAudio } from '../sync.js';
+import { milestonesFor, AWARD_ICONS } from '../milestones.js';
 
 export async function clientsView() {
   const [clients, sessions, lastBackup, auth] = await Promise.all([db.all('clients'), db.all('sessions'), db.getMeta('lastBackup'), db.getMeta('auth')]);
@@ -46,6 +47,36 @@ export async function clientsView() {
   $('[data-search]', view)?.addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase();
     $$('.client-row', view).forEach(el => { el.hidden = !el.dataset.name.includes(q); });
+  });
+}
+
+// Accolades Drew adds himself: the things Spotter can't work out on its own.
+export function addAward(client, done) {
+  openSheet({
+    title: `Accolade for ${client.name}`,
+    body: `
+      <form class="stack" data-form>
+        <label class="field"><span>What happened</span><input name="title" required placeholder="e.g. First amateur fight win" autocomplete="off"></label>
+        <label class="field"><span>Date</span><input name="date" type="date" value="${isoDate()}" required></label>
+        <fieldset class="field"><span>Badge</span>
+          <div class="chips">${AWARD_ICONS.map((icon, i) => `<label class="chip"><input type="radio" name="icon" value="${icon}" ${i === 0 ? 'checked' : ''}><span>${icon}</span></label>`).join('')}</div>
+        </fieldset>
+        <label class="field"><span>Note <em class="muted">(optional)</em></span><textarea name="note" rows="2" placeholder="Anything worth remembering"></textarea></label>
+        <button class="btn primary block">Save accolade</button>
+      </form>`,
+    onMount: (el, close) => {
+      $('[data-form]', el).addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = new FormData(e.target);
+        await db.put('awards', {
+          id: uid(), clientId: client.id, date: f.get('date'), title: f.get('title').trim(),
+          icon: f.get('icon'), note: f.get('note').trim(), createdAt: Date.now(),
+        });
+        close();
+        toast('Accolade saved');
+        done?.();
+      });
+    },
   });
 }
 
@@ -141,7 +172,7 @@ export async function clientFormView(id) {
 
   $('[data-delete]', view)?.addEventListener('click', async () => {
     if (!confirm(`Delete ${c.name} and all of their sessions, memos, plans and recaps? This can't be undone.`)) return;
-    for (const store of ['sessions', 'memos', 'plans', 'recaps']) {
+    for (const store of ['sessions', 'memos', 'plans', 'recaps', 'awards']) {
       for (const row of await db.byClient(store, id)) await db.del(store, row.id);
     }
     await db.del('clients', id);
@@ -154,11 +185,14 @@ export async function clientView(id, query) {
   const client = await db.get('clients', id);
   if (!client) return (location.hash = '#/');
   const tab = query.get('tab') || 'timeline';
-  const [sessions, memos, recaps] = await Promise.all([db.byClient('sessions', id), db.byClient('memos', id), db.byClient('recaps', id)]);
+  const [sessions, memos, recaps, awards] = await Promise.all([
+    db.byClient('sessions', id), db.byClient('memos', id), db.byClient('recaps', id), db.byClient('awards', id),
+  ]);
   const program = programFor(client);
   const cycle = cycleInfo(client, weekStart());
   const levelUps = levelUpSuggestions(client, attended(sessions));
   const unit = await db.getMeta('weightUnit', 'lb');
+  const milestones = milestonesFor({ client, sessions, awards, unit });
 
   const view = page({
     title: client.name,
@@ -178,18 +212,24 @@ export async function clientView(id, query) {
         <div class="phase-steps">${[0, 1, 2, 3].map(i => `<span class="${i === cycle.phaseIndex ? 'on' : i < cycle.phaseIndex ? 'done' : ''}"></span>`).join('')}</div>
         <div class="small"><b>Block ${cycle.block} · ${esc(cycle.phase.name)}</b> week — ${esc(cycle.theme)} focus</div>
       </a>` : ''}
+      ${milestones[0] ? `<a class="banner trophy" href="#/clients/${id}?tab=progress">${milestones[0].icon} <b>${esc(milestones[0].title)}</b> · ${fmtDate(milestones[0].date, { month: 'short', day: 'numeric' })}</a>` : ''}
       ${levelUps.map(l => `<a class="banner" href="#/clients/${id}/edit">⬆ ${esc(l.discipline)} ratings are averaging ${l.avg.toFixed(1)} — ready to move up to ${LEVELS[l.level + 1]}?</a>`).join('')}
       <div class="actions">
         <a class="action" href="#/clients/${id}/sessions/new"><span>📝</span>Log session</a>
         <button class="action" data-memo><span>🎙</span>Voice memo</button>
         <a class="action" href="#/clients/${id}/plan"><span>🗓</span>Week plan</a>
         <a class="action" href="#/clients/${id}/recap"><span>✉️</span>Recap</a>
+        <button class="action" data-award><span>🏆</span>Accolade</button>
       </div>
       <div class="tabs">
         <a href="#/clients/${id}?tab=timeline" class="${tab === 'timeline' ? 'on' : ''}">Timeline</a>
         <a href="#/clients/${id}?tab=progress" class="${tab === 'progress' ? 'on' : ''}">Progress</a>
       </div>
-      <div data-tab>${tab === 'progress' ? progressTab(client, sessions, unit) : timelineTab(client, sessions, memos, recaps, unit)}</div>`,
+      <div data-tab>${tab === 'progress' ? progressTab(client, sessions, unit, milestones) : timelineTab(client, sessions, memos, recaps, unit, milestones)}</div>`,
+  });
+
+  view.addEventListener('click', e => {
+    if (e.target.closest('[data-award]')) addAward(client, () => clientView(id, query));
   });
 
   $('[data-memo]', view).addEventListener('click', () =>
@@ -219,11 +259,12 @@ export async function clientView(id, query) {
   });
 }
 
-function timelineTab(client, sessions, memos, recaps, unit) {
+function timelineTab(client, sessions, memos, recaps, unit, milestones) {
   const items = [
     ...sessions.map(s => ({ kind: 'session', date: s.date, at: s.createdAt, s })),
     ...memos.map(m => ({ kind: 'memo', date: m.date, at: m.createdAt, m })),
     ...recaps.map(r => ({ kind: 'recap', date: r.date, at: r.createdAt, r })),
+    ...milestones.map(m => ({ kind: 'milestone', date: m.date, at: Number.MAX_SAFE_INTEGER, m })),
   ].sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
 
   if (!items.length) return emptyState('🗒', 'Nothing logged yet', 'Log a session or record a voice memo — everything shows up here in order.');
@@ -233,6 +274,7 @@ function timelineTab(client, sessions, memos, recaps, unit) {
     const header = item.date !== lastDate ? `<div class="tl-date">${fmtDate(item.date)} <span class="muted">· ${daysAgo(item.date)}</span></div>` : '';
     lastDate = item.date;
     if (item.kind === 'session') return header + (item.s.cancelled ? cancelledCard(client, item.s) : sessionCard(client, item.s, unit));
+    if (item.kind === 'milestone') return header + milestoneCard(item.m);
     if (item.kind === 'memo') return header + memoCard(item.m);
     return header + recapCard(item.r);
   }).join('')}</div>`;
@@ -249,6 +291,15 @@ function sessionCard(client, s, unit) {
       ${ratings.length ? `<div class="mini-ratings">${ratings.map(k => `<span>${esc(k)} <b>${s.ratings[k]}</b></span>`).join('')}</div>` : ''}
       ${s.wentWell ? `<div class="small good">✓ ${esc(s.wentWell)}</div>` : ''}
       ${s.workOn ? `<div class="small warn-text">↗ ${esc(s.workOn)}</div>` : ''}
+    </div>`;
+}
+
+function milestoneCard(m) {
+  return `
+    <div class="card tl-item trophy-item">
+      <div class="row gap"><span class="m-icon">${m.icon}</span>
+        <div class="grow"><div class="m-title">${esc(m.title)}</div>${m.detail ? `<div class="muted small">${esc(m.detail)}</div>` : ''}</div>
+        ${m.id ? deleteButton('awards', m.id, 'accolade') : ''}</div>
     </div>`;
 }
 
@@ -311,8 +362,24 @@ export function bindMemoCards(root, memos, refresh) {
   }
 }
 
-function progressTab(client, allSessions, unit) {
-  if (!allSessions.length) return emptyState('📈', 'No progress data yet', 'Rate skills when you log sessions and trends will build up here.');
+// Session counts, PRs, streaks and anniversaries work themselves out; the rest Drew adds.
+function milestonesCard(milestones, limit = 6) {
+  return `
+    <section class="card">
+      <div class="row"><h3 class="grow">Milestones</h3><button class="btn ghost small" data-award>+ Accolade</button></div>
+      ${milestones.length ? milestones.slice(0, limit).map(m => `
+        <div class="milestone">
+          <span class="m-icon">${m.icon}</span>
+          <div class="grow"><div class="m-title">${esc(m.title)}</div>
+            <div class="muted small">${fmtDate(m.date)}${m.detail ? ` · ${esc(m.detail)}` : ''}</div></div>
+        </div>`).join('')
+      : '<p class="muted small">Session counts, weight PRs, streaks and anniversaries show up here on their own. Add your own for the things only you know about.</p>'}
+      ${milestones.length > limit ? `<p class="muted small">${milestones.length - limit} more further down their timeline.</p>` : ''}
+    </section>`;
+}
+
+function progressTab(client, allSessions, unit, milestones = []) {
+  if (!allSessions.length) return milestonesCard(milestones) + emptyState('📈', 'No progress data yet', 'Rate skills when you log sessions and trends will build up here.');
   const sessions = attended(allSessions);
   const summary = skillSummary(client, sessions);
   const focus = focusAreas(client, sessions);
@@ -324,6 +391,7 @@ function progressTab(client, allSessions, unit) {
   const lifts = [...weightHistory(sessions).entries()].map(([, entries]) => entries).sort((a, b) => b.at(-1).date.localeCompare(a.at(-1).date));
 
   return `
+    ${milestonesCard(milestones)}
     ${focus.length ? `
       <section class="card focus">
         <h3>Areas to sharpen</h3>
