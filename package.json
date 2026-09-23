@@ -1,0 +1,9 @@
+{
+  "name": "spotter",
+  "private": true,
+  "type": "module",
+  "description": "Marks the .js files as ES modules so Node can run the tests. Spotter has no dependencies and no build step \u2014 there is nothing to npm install.",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.mjs\""
+  }
+}

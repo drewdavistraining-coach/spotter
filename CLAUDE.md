@@ -9,7 +9,8 @@ developer. Explain changes in plain language, and keep the code simple enough fo
 ## Hard rules
 
 - **Live site = `main` branch.** GitHub Pages serves https://drewdavistraining-coach.github.io/spotter/ from
-  `main`, so every push to `main` ships to Drew's phone. Test locally before pushing.
+  `main`, so every push to `main` ships to Drew's phone. Run `npm test` and check the change in a browser
+  before pushing.
 - **Bump `VERSION` in `sw.js` on every change to a cached file** (anything in its `SHELL` list). The service
   worker is network-first, so an online phone loads new files anyway. But the version bump is what refreshes
   the offline copy and triggers the in-app "updated" reload. If you add a new JS/CSS file, add it to `SHELL` too.
@@ -39,6 +40,21 @@ python tools/devserver.py 5179
 Then open http://localhost:5179. Use this rather than `python -m http.server`: it sends no-cache headers,
 so a refresh really does run the file you just edited (plain http.server lets the browser keep old modules
 and makes testing lie to you). The service worker is skipped on localhost too. `localhost` counts as a secure site, so the mic works there too.
+
+## Tests
+
+```bash
+npm test          # or: node --test "tests/**/*.test.mjs"
+```
+
+51 tests over the logic that decides things — `planner.js`, `progress.js`, `recap.js`, `milestones.js`,
+`util.js`. No dependencies and no build; `package.json` exists only to mark the files as ES modules for Node.
+
+- **Run them before pushing**, and add a test with any change to that logic. They run in under a second.
+- They cover real regressions: cancellations not counting as training, only the standing PR per drill,
+  level-ups needing evidence in that discipline, a client record with no rating categories, private notes
+  staying out of recaps, live rounds only in the Apply week.
+- Screens (`js/views/*`) aren't covered — they need a browser. Test those by driving the app.
 
 ## Conventions
 

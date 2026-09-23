@@ -69,7 +69,8 @@ in the terminal to stop it.
    run `claude`, and describe what you want. For example: *"Add a 'Clinch work' category to the drill library"*
    or *"Make the recap email mention how many rounds of sparring they did."* The `CLAUDE.md` file in this
    folder gives Claude the rules for this app.
-4. **Test it** in the browser. Click through the screen you changed, then refresh.
+4. **Test it.** Run `npm test` (a second, no internet needed) — that checks the planning, progress, recap
+   and milestone logic. Then click through the screen you changed in the browser.
 5. **Bump the version:** in `sw.js`, raise the number in `const VERSION = 'spotter-v3'` (`spotter-v4`, …).
    Skip this and the offline copy on your phone stays out of date.
 6. **Publish:**
@@ -83,7 +84,8 @@ in the terminal to stop it.
 
 ### The three rules
 
-1. **Test locally before you push.** Whatever is on GitHub `main` is what your phone runs.
+1. **Test locally before you push.** Run `npm test`, and click through what you changed. Whatever is on
+   GitHub `main` is what your phone runs.
 2. **Always bump `VERSION` in `sw.js`** when you change the app.
 3. **Back up before risky changes.** Before publishing anything that changes how clients, sessions or plans
    are *saved* or *synced*, tap Settings → **Back up now** on your phone first. A bad sync change copies itself

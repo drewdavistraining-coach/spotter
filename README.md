@@ -18,6 +18,16 @@ python tools/devserver.py 5179
 Then open http://localhost:5179. There's no build step: edit a file, refresh. (`tools/devserver.py` is
 `http.server` with no-cache headers, so refreshes always run the latest file.)
 
+## Tests
+
+```bash
+npm test
+```
+
+51 tests (Node's built-in runner — no dependencies, no build) over `planner.js`, `progress.js`, `recap.js`,
+`milestones.js` and `util.js`: the logic that builds weeks, works out progress, writes recaps and decides
+milestones. Screens need a browser and aren't covered. See `CLAUDE.md` → Tests.
+
 ## Put it on his iPhone
 
 **Live at https://drewdavistraining-coach.github.io/spotter/**. It's hosted by GitHub Pages from the `main` branch of
