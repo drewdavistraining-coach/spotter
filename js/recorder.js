@@ -45,6 +45,8 @@ export function openRecorder({ clientId, clientName, sessionId = null, onSaved }
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (Speech) dictateBtn.hidden = false;
 
+  overlay.dismiss = () => close(); // leaving the screen stops the mic as well as closing the sheet
+
   function close() {
     stopStream();
     recognition?.abort();

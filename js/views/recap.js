@@ -85,8 +85,11 @@ export async function recapView(clientId) {
     if (confirm('Regenerate? Your edits to the email will be replaced.')) generate();
   });
 
+  // Sending twice (or sharing then mailing) updates the same entry instead of filling the timeline.
+  let recordId = null;
   async function record() {
-    await db.put('recaps', { id: uid(), clientId, date: today, createdAt: Date.now(), from: from.value, to: to.value, subject: subject.value, body: body.value });
+    recordId = recordId || uid();
+    await db.put('recaps', { id: recordId, clientId, date: today, createdAt: Date.now(), from: from.value, to: to.value, subject: subject.value, body: body.value });
   }
 
   $('[data-copy]', view).addEventListener('click', async () => {

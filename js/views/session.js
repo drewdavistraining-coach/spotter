@@ -250,7 +250,8 @@ export async function sessionFormView(clientId, sessionId) {
   // Ratings: one row per category this client is tracked on.
   const ratingsEl = $('[data-ratings]', view);
   function renderRatings() {
-    ratingsEl.innerHTML = client.skills.length ? client.skills.map(skill => `
+    const skills = client.skills || [];
+    ratingsEl.innerHTML = skills.length ? skills.map(skill => `
       <div class="rating-row" data-skill="${esc(skill)}">
         <span class="grow">${esc(skill)}</span>
         <div class="seg">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${s.ratings[skill] === n ? 'on' : ''}">${n}</button>`).join('')}</div>
@@ -282,7 +283,7 @@ export async function sessionFormView(clientId, sessionId) {
           client.skills = editor.get();
           await db.put('clients', client);
           if (!existing) { // a brand-new session shouldn't keep ratings for categories just removed
-            for (const skill of Object.keys(s.ratings)) if (!client.skills.includes(skill)) delete s.ratings[skill];
+            for (const skill of Object.keys(s.ratings)) if (!client.skills?.includes(skill)) delete s.ratings[skill];
           }
           renderRatings();
           close();

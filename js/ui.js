@@ -6,9 +6,18 @@ export function page({ title, back = null, action = '', body }) {
     ${back ? `<a class="icon-btn back" href="${back}" aria-label="Back">‹</a>` : '<span class="brand-mark">S</span>'}
     <h1>${esc(title)}</h1>
     <div class="top-action">${action}</div>`;
-  const view = document.getElementById('view');
+
+  // A sheet or the voice recorder floats above the page, so it would otherwise sit on top of the next
+  // screen — with the microphone still running. Each one leaves a dismiss handle for exactly this.
+  for (const overlay of document.querySelectorAll('.sheet-backdrop')) (overlay.dismiss || (() => overlay.remove()))();
+
+  // Swap in a fresh container rather than refilling the old one: any listener a screen attached to its
+  // container dies with it, instead of stacking up every time that screen is opened.
+  const old = document.getElementById('view');
+  const view = document.createElement('main');
+  view.id = 'view';
   view.innerHTML = body;
-  view.scrollTop = 0;
+  old.replaceWith(view);
   window.scrollTo(0, 0);
   return view;
 }
@@ -22,7 +31,12 @@ export function openSheet({ title, body, onMount }) {
       <div class="sheet-body">${body}</div>
     </div>`;
   const close = () => overlay.remove();
+  overlay.dismiss = close; // page() calls this when the screen changes
   overlay.addEventListener('click', e => { if (e.target === overlay || e.target.closest('[data-close]')) close(); });
+  document.addEventListener('keydown', function onKey(e) {
+    if (!overlay.isConnected) return document.removeEventListener('keydown', onKey);
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+  });
   document.body.append(overlay);
   onMount?.(overlay, close);
   return { el: overlay, close };

@@ -401,6 +401,7 @@ export async function planView(clientId, week) {
         block.classList.remove('dragging');
         document.body.classList.remove('dragging-block');
         if (!moved) return; // a tap on the grip changes nothing
+        if (!block.isConnected) return; // the screen changed mid-drag; nothing to save
         await saveOrder();
       };
 

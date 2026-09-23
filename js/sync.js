@@ -205,6 +205,7 @@ async function pull(session, { everything = false } = {}) {
   const needAudio = [];
   let changed = 0;
   let newest = cursor;
+  let firstFailure = null; // a row we couldn't apply: stop the cursor here so it's retried
 
   for (let offset = 0; ; offset += PAGE) {
     const filter = since ? `&updated_at=gte.${encodeURIComponent(since)}` : '';
@@ -212,32 +213,39 @@ async function pull(session, { everything = false } = {}) {
     const rows = await res.json();
 
     for (const row of rows) {
-      newest = row.updated_at;
-      if (!STORES.includes(row.store) || (row.store === 'meta' && !SYNCED_META.includes(row.id))) continue;
-      const key = `${row.store}:${row.id}`;
-      remote.set(key, row.modified);
-      const mine = pending.get(key);
-      if (mine && mine.modified > row.modified) continue; // my newer edit is about to upload
-      if (mine) await db.outbox.remove(mine); // theirs is newer: drop my stale edit
+      if (!firstFailure) newest = row.updated_at;
+      try {
+        if (!STORES.includes(row.store) || (row.store === 'meta' && !SYNCED_META.includes(row.id))) continue;
+        const key = `${row.store}:${row.id}`;
+        remote.set(key, row.modified);
+        const mine = pending.get(key);
+        if (mine && mine.modified > row.modified) continue; // my newer edit is about to upload
+        if (mine) await db.outbox.remove(mine); // theirs is newer: drop my stale edit
 
-      const local = await db.get(row.store, row.id);
-      if (row.deleted) {
-        if (local) { await db.del(row.store, row.id, { fromSync: true }); changed++; }
-        continue;
+        const local = await db.get(row.store, row.id);
+        if (row.deleted) {
+          if (local) { await db.del(row.store, row.id, { fromSync: true }); changed++; }
+          continue;
+        }
+        if (local && (local._modified || 0) >= row.modified) continue; // already have it (often my own upload)
+        const record = { ...row.data, _modified: row.modified };
+        if (row.store === 'memos') {
+          record.audio = local?.audio || null;
+          if (!record.audio && record.audioPath) needAudio.push(record.id);
+        }
+        await db.put(row.store, record, { fromSync: true });
+        changed++;
+      } catch (err) {
+        // e.g. a record written by a newer version of Spotter than this device is running.
+        // Leave the cursor here so it's tried again rather than skipped for good.
+        console.warn('Could not apply a synced change; will retry', row.store, row.id, err);
+        firstFailure = firstFailure || row.updated_at;
       }
-      if (local && (local._modified || 0) >= row.modified) continue; // already have it (often my own upload)
-      const record = { ...row.data, _modified: row.modified };
-      if (row.store === 'memos') {
-        record.audio = local?.audio || null;
-        if (!record.audio && record.audioPath) needAudio.push(record.id);
-      }
-      await db.put(row.store, record, { fromSync: true });
-      changed++;
     }
     if (rows.length < PAGE) break;
   }
 
-  if (newest) await db.setMeta('syncCursor', newest);
+  if (firstFailure || newest) await db.setMeta('syncCursor', firstFailure || newest);
   // Audio downloads don't block the sync; memos show their notes straight away.
   Promise.all(needAudio.map(id => downloadAudio(session, id).catch(err => console.warn('Audio download failed', err))))
     .then(() => needAudio.length && window.dispatchEvent(new Event('spotter:remote-change')));

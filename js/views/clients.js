@@ -281,7 +281,7 @@ function timelineTab(client, sessions, memos, recaps, unit, milestones) {
 }
 
 function sessionCard(client, s, unit) {
-  const ratings = client.skills.filter(k => typeof s.ratings?.[k] === 'number');
+  const ratings = (client.skills || []).filter(k => typeof s.ratings?.[k] === 'number');
   return `
     <div class="card tl-item" data-open="#/clients/${client.id}/sessions/${s.id}">
       <div class="row"><div class="tl-kind grow">📝 ${esc(s.type || 'Session')}${s.duration ? ` · ${esc(s.duration)} min` : ''}</div>
@@ -335,13 +335,28 @@ function recapCard(r) {
     </details>`;
 }
 
+// Audio elements need object URLs; they'd leak memory if we never handed them back.
+const audioUrls = [];
+function releaseStaleAudio() {
+  for (let i = audioUrls.length - 1; i >= 0; i--) {
+    const { el, url } = audioUrls[i];
+    if (el.isConnected) continue;
+    URL.revokeObjectURL(url);
+    audioUrls.splice(i, 1);
+  }
+}
+
 // Audio elements need object URLs, and notes save as you type.
 export function bindMemoCards(root, memos, refresh) {
+  releaseStaleAudio();
   for (const card of $$('[data-memo-id]', root)) {
     const memo = memos.find(m => m.id === card.dataset.memoId);
     if (!memo) continue;
     const audio = $('[data-audio]', card);
-    if (audio && memo.audio) audio.src = URL.createObjectURL(memo.audio);
+    if (audio && memo.audio) {
+      audio.src = URL.createObjectURL(memo.audio);
+      audioUrls.push({ el: audio, url: audio.src });
+    }
     let saveTimer;
     $('[data-memo-note]', card).addEventListener('input', e => {
       clearTimeout(saveTimer);
