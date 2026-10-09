@@ -8,6 +8,7 @@ import { focusAreas } from '../progress.js';
 export async function weekView(week) {
   const ws = weekStart(week || isoDate());
   const [clients, plans, sessions, drills] = await Promise.all([db.all('clients'), db.all('plans'), db.all('sessions'), db.all('drills')]);
+  const unit = await db.getMeta('weightUnit', 'lb');
   const weekPlans = plans.filter(p => p.weekStart === ws);
   const byId = Object.fromEntries(clients.map(c => [c.id, c]));
   const unplanned = clients.filter(c => !weekPlans.some(p => p.clientId === c.id && p.days.flat().length)).sort((a, b) => a.name.localeCompare(b.name));
@@ -66,8 +67,9 @@ export async function weekView(week) {
       const mine = plans.filter(p => p.clientId === client.id);
       const existing = mine.find(p => p.weekStart === ws);
       const focusSkills = focusAreas(client, sessions.filter(s => s.clientId === client.id)).map(f => f.skill);
-      const { days: built, info } = autoBuildWeek({ client, drills, plans: mine, ws, trainingDays: programFor(client).days, focusSkills });
-      await db.put('plans', { id: existing?.id || uid(), clientId: client.id, weekStart: ws, notes: existing?.notes || '', ...existing, days: built, phase: info.phase.name, theme: info.theme });
+      const mySessions = sessions.filter(s => s.clientId === client.id);
+      const { days: built, info } = autoBuildWeek({ client, drills, plans: mine, ws, trainingDays: programFor(client).days, focusSkills, sessions: mySessions, unit });
+      await db.put('plans', { id: existing?.id || uid(), clientId: client.id, weekStart: ws, notes: existing?.notes || '', ...existing, days: built, phase: info.phase.name, theme: info.theme, why: info.rationale });
     }
     toast(`Built ${buildable.length} plan${buildable.length === 1 ? '' : 's'}`);
     weekView(ws);

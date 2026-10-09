@@ -43,7 +43,15 @@ test('weights are reported against the best before this period', () => {
     session({ date: daysAgo(2), drills: [lift('Front squat', [{ weight: 185, reps: 5 }])] }),
   ]);
   assert.match(body, /WEIGHTS \(lb\)/);
-  assert.match(body, /Front squat: 5 × 185 lb \(up 30 from 155\)/);
+  assert.match(body, /Front squat: 185 lb — a 30 lb jump, your biggest on this lift\./);
+});
+
+test('a lift that held steady says so, without pretending it was a PR', () => {
+  const body = write([
+    session({ date: daysAgo(30), drills: [lift('Front squat', [{ weight: 185, reps: 5 }])] }),
+    session({ date: daysAgo(2), drills: [lift('Front squat', [{ weight: 185, reps: 5 }])] }),
+  ]);
+  assert.match(body, /holding steady/);
 });
 
 test('ratings are compared with the period before', () => {
@@ -52,6 +60,16 @@ test('ratings are compared with the period before', () => {
     session({ date: daysAgo(2), ratings: { Hands: 4 } }),
   ]);
   assert.match(body, /Hands: 4\.0 \(up from 2\.0\)/);
+});
+
+test('strengths are described in coach language, not as field names', () => {
+  const c = client({ skills: ['Takedowns'] });
+  const sessions = [1, 2, 3].map(d => session({ date: daysAgo(d), ratings: { Takedowns: 5 } }));
+  const body = buildRecap({ client: c, sessions, ...lastWeek, settings }).body;
+  const working = body.split("WHAT'S WORKING")[1].split('\n\n')[0];
+  assert.ok(!working.includes('Takedowns is'), 'should not read like a label');
+  assert.ok(!working.includes('looking sharp'), 'the old catch-all wording is gone');
+  assert.match(working, /shots|takedowns/i);
 });
 
 test('a skill is never called both a strength and a weakness', () => {

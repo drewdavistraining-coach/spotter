@@ -48,6 +48,7 @@ export async function planView(clientId, week) {
         <button class="btn ghost" data-clear>Clear</button>
       </div>
       <div data-clipboard></div>
+      <div data-why></div>
       <section class="card variety" data-variety></section>
       <div data-days></div>
       <label class="field"><span>Notes for this week</span><textarea rows="2" data-notes placeholder="Included under the plan in their recap">${esc(plan.notes)}</textarea></label>`,
@@ -59,6 +60,10 @@ export async function planView(clientId, week) {
     $('[data-clipboard]', view).innerHTML = clipboard
       ? `<div class="banner row gap wrap"><span class="grow">📋 Copied: <b>${esc(clipboard.label)}</b> — tap Paste on any day${clipboard.blocks.length === 1 ? '' : ` (${clipboard.blocks.length} drills)`}</span>
            <button class="btn ghost small" data-clear-clip>Clear</button></div>`
+      : '';
+
+    $('[data-why]', view).innerHTML = plan.why?.length
+      ? `<details class="card why"><summary>Why this week</summary>${plan.why.map(line => `<p class="small">${esc(line)}</p>`).join('')}</details>`
       : '';
 
     const report = varietyReport(plan, plans, drills, focusSkills);
@@ -90,7 +95,7 @@ export async function planView(clientId, week) {
             <button class="icon-btn small grip" data-grip aria-label="Drag to reorder ${esc(b.name)}" title="Drag to reorder">⠿</button>
             ${catDot(b.category)}
             <div class="grow">
-              <div>${esc(b.name)}</div>
+              <div>${b.core ? '<span class="core-mark" title="Core drill for this block">★</span> ' : ''}${esc(b.name)}</div>
               <input class="dose" value="${esc(b.dose)}" placeholder="sets / rounds" data-dose="${day}:${i}">
               ${b.sets?.length && !openWeights.has(`${day}:${i}`) ? `<div class="muted small">🏋️ ${esc(fmtSets(b.sets, unit))}</div>` : ''}
               ${openWeights.has(`${day}:${i}`) ? weightsEditor(b, day, i) : ''}
@@ -263,8 +268,8 @@ export async function planView(clientId, week) {
           const days = $$('input:checked', el).map(i => Number(i.value));
           if (!days.length) return toast('Pick at least one day');
           if (plan.days.flat().length && !confirm('Replace the current plan for this week?')) return;
-          const built = autoBuildWeek({ client, drills, plans, ws, trainingDays: days, focusSkills });
-          Object.assign(plan, { days: built.days, phase: cycle.phase.name, theme: cycle.theme });
+          const built = autoBuildWeek({ client, drills, plans, ws, trainingDays: days, focusSkills, sessions, unit });
+          Object.assign(plan, { days: built.days, phase: cycle.phase.name, theme: cycle.theme, why: built.info.rationale });
           client.program = { ...program, days };
           await db.put('clients', client); // remember their usual days
           await save();

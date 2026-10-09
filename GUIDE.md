@@ -52,9 +52,14 @@ Every block puts **one discipline up front**, and that focus rotates block to bl
 Muay Thai block, and so on). That's what stops a long-term client drifting into whatever you're training
 yourself, and it means next week is never a blank page.
 
-**Auto-build** fills the week from that. It favours drills they haven't done in the last few weeks, drills
-that train skills rating low, drills at their level, and the intensity the phase calls for. A drill harder
-than the week calls for is unlikely to appear — no hard sparring in a Learn week.
+**Auto-build** works like coaching, not shuffling. Each block picks **two core drills plus one core lift**
+and teaches them all four weeks — marked **★** in the plan. The dose grows as the block goes on (4 rounds in
+Learn, 5 in Build, 6 in Apply, back down in Test & recover), and the core lift is prescribed from the weight
+that client last actually used, moved up a step. Everything around the core rotates for variety: drills they
+haven't done lately, at their level, at the intensity the week calls for. No hard sparring in a Learn week.
+
+**Tap "Why this week"** above the days and it tells you what it did and why: which drills are the core for
+this block, which weak skill they address, and what this week in the block is for.
 
 **The Week tab has "Auto-build all"**, which plans every client without a plan in one tap.
 
@@ -267,6 +272,8 @@ Most surprises make sense once you know these:
 | **Weights per set** | Logged per drill per client, so the Progress tab and recaps can show what changed. Plans can prescribe weights that carry into the session |
 | **Drag and drop, arrows, Undo** | Reorder a week by dragging a grip, or with ↑ / ↓ at the edges to hop days. A mis-tapped ✕ is recoverable |
 | **Copy and paste a day** | Build a session once and reuse it — another day, another week, another client. Doses and planned weights come with it |
+| **Auto-build rebuilt around a core** | Each block now teaches 2 core drills and a core lift for all four weeks, with dose and weight climbing. Only the slots around them rotate, and the plan explains itself |
+| **Recaps in coach language** | Each rating category has its own phrasing ("your shots are getting quicker" rather than "your takedowns are looking sharp"), varied day to day, and PRs that say how big the jump was |
 | **Accolades and milestones** | Session counts, PRs, streaks and anniversaries appear on their own; you add the ones only you know about. They show on the profile, Progress tab, timeline and recaps |
 | **Delete from the timeline** | Any card can be removed, with Undo. Deleting a session also removes its ratings and weights from the charts |
 
@@ -285,6 +292,11 @@ timeline or the week plan.
 **A drill I deleted came back.**
 That happens when another device still had it and hadn't synced yet. Delete it once both devices are signed
 in and it stays gone.
+
+**Why does the same drill keep showing up every week?**
+That's the point — it's a **★ core drill** for this 4-week block. The same drills are taught through Learn,
+Build and Apply with more volume each week, which is how a skill actually sticks. Everything else rotates.
+The core changes when the next block starts.
 
 **Why is the planner ignoring a drill?**
 Usually its level is above that client's level in that discipline, or they did it in the last couple of

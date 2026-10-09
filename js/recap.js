@@ -3,6 +3,7 @@
 import { fmtDate, fmtRange, firstName, parseDate, addDays, DAY_NAMES, fmtSets } from './util.js';
 import { byDate, inRange, skillAverage, focusAreas, strengths, trend, skillSeries, attended, cancelled, weightHistory } from './progress.js';
 import { milestonesFor, milestonesInRange } from './milestones.js';
+import { phraseFor, prPhrase, streakPhrase } from './phrases.js';
 
 const one = n => (Math.round(n * 10) / 10).toFixed(1);
 
@@ -40,31 +41,33 @@ export function buildRecap({ client, sessions, awards = [], from, to, nextPlan, 
   }
 
   // Anything worth celebrating that happened in this stretch.
-  const milestones = milestonesInRange(
-    milestonesFor({ client, sessions, awards, unit: settings.weightUnit || 'lb' }),
-    from,
-    to,
-  );
+  const unit = settings.weightUnit || 'lb';
+  const lifts = weightHistory(period);
+  const milestones = milestonesInRange(milestonesFor({ client, sessions, awards, unit }), from, to)
+    .filter(m => m.kind !== 'pr' || !lifts.size); // the weights section already celebrates PRs
   if (milestones.length) {
     lines.push('MILESTONES');
-    for (const m of [...milestones].reverse()) lines.push(`- ${m.icon} ${m.title}${m.detail ? ` ${m.detail}` : ''}`);
+    for (const m of [...milestones].reverse()) {
+      const streak = m.kind === 'streak' ? Number(m.title.match(/^(\d+)/)?.[1]) : 0;
+      lines.push(`- ${m.icon} ${streak ? streakPhrase(streak) : `${m.title}${m.detail ? ` ${m.detail}` : ''}`}`);
+    }
     lines.push('');
   }
 
   // Weights, when there are any: this period's top set against the best before it.
-  const lifts = weightHistory(period);
   if (lifts.size) {
     const before = weightHistory(sessions.filter(s => s.date < from));
-    lines.push(`WEIGHTS (${settings.weightUnit || 'lb'})`);
+    lines.push(`WEIGHTS (${unit})`);
     for (const [key, entries] of lifts) {
       const now = entries.at(-1);
       const was = before.get(key)?.at(-1);
-      let change = '';
-      if (was?.top && now.top) {
-        const delta = Number(now.top.weight) - Number(was.top.weight);
-        change = delta > 0 ? ` (up ${delta} from ${was.top.weight})` : delta < 0 ? ` (down from ${was.top.weight})` : ' (same as last time)';
+      if (was?.top && now.top && Number(now.top.weight) > Number(was.top.weight)) {
+        // A new best deserves better than "(up 10 from 155)".
+        lines.push(`- ${prPhrase({ name: now.name, weight: now.top.weight, previous: was.top.weight, unit })}`);
+      } else {
+        const same = was?.top && Number(now.top?.weight) === Number(was.top.weight);
+        lines.push(`- ${now.name}: ${fmtSets(now.sets, unit)}${same ? ' (holding steady)' : ''}`);
       }
-      lines.push(`- ${now.name}: ${fmtSets(now.sets, settings.weightUnit || 'lb')}${change}`);
     }
     lines.push('');
   }
@@ -91,7 +94,10 @@ export function buildRecap({ client, sessions, awards = [], from, to, nextPlan, 
   const strong = strengths(client, upToNow).filter(s => s.trend >= 0);
   if (wins.length || strong.length) {
     lines.push("WHAT'S WORKING");
-    for (const s of strong) lines.push(`- Your ${s.skill.toLowerCase()} is looking sharp${s.trend > 0.25 ? ' and still climbing' : ''}.`);
+    for (const s of strong) {
+      const phrase = phraseFor(s.skill, s.trend > 0.25 ? 'climbing' : 'strong', `${client.id}:${to}`);
+      lines.push(`- ${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}.`);
+    }
     for (const w of wins) lines.push(`- ${w}`);
     lines.push('');
   }
@@ -104,7 +110,8 @@ export function buildRecap({ client, sessions, awards = [], from, to, nextPlan, 
     lines.push('AREAS TO SHARPEN');
     for (const f of focus) {
       const slipping = trend(skillSeries(upToNow, f.skill)) < -0.25;
-      lines.push(`- ${f.skill}${slipping ? " has slipped a little - we'll put extra reps here." : ' is our main focus next.'}`);
+      const phrase = phraseFor(f.skill, slipping ? 'slipping' : 'focus', `${client.id}:${to}`);
+      lines.push(`- ${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}.`);
     }
     for (const w of workOn) lines.push(`- ${w}`);
     lines.push('');

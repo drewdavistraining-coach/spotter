@@ -301,6 +301,9 @@ details summary::-webkit-details-marker { display: none; }
 .block .icon-btn.small.on { color: var(--accent); }
 .block .sets { border-top: 0; padding-top: 2px; }
 .block .set-row input { font-size: 15px; }
+.core-mark { color: var(--accent); font-size: 12px; }
+.why summary { font-weight: 600; font-size: 13px; color: var(--muted); }
+.why p { margin: 8px 0 0; }
 .block.dragging { opacity: .25; }
 .block.ghost {
   background: var(--surface-2); border: 1px solid var(--accent); border-radius: 10px;

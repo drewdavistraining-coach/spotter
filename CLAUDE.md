@@ -62,9 +62,16 @@ npm test          # or: node --test "tests/**/*.test.mjs"
 - Views render HTML strings. **Always pass user text through `esc()`.**
 - Colours and spacing are CSS variables at the top of `styles.css`.
 - Planner behaviour lives in `js/planner.js`:
-  - `slotsFor()` shapes each training day.
-  - `PHASES` defines the 4-week cycle.
-  - The scoring inside `autoBuildWeek()` decides which drill wins.
+  - `blockCore()` picks the drills a block is built on — stable per (client, block, theme) via a seeded
+    random, so rebuilding a week never reshuffles what he's been teaching. This is the answer to
+    "auto-build feels random": most of a week is fixed, only the accessory slots rotate.
+  - `progressDose()` / `progressSets()` grow the core through the block and deload in week 4.
+  - `slotsFor()` shapes each training day; `'core'` slots are filled from the block core.
+  - `PHASES` defines the 4-week cycle; `rationaleFor()` explains the week on screen.
+  - The scoring inside `autoBuildWeek()` decides the rotating slots.
+- **Recap wording lives in `js/phrases.js`**, one phrase bank per rating category with strong / climbing /
+  focus / slipping variants, picked by a seed of client + date so it's varied but stable. Add to the bank
+  rather than writing sentences into `recap.js` — generic template language was a real complaint.
 - Editable name lists use `listEditor()` in `js/ui.js`:
   - a client's rating categories are stored as `client.skills`;
   - session types are stored as meta `sessionTypes`, read through `sessionTypes()` in `db.js`.
