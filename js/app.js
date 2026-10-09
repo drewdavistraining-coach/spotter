@@ -10,6 +10,7 @@ import { weekView } from './views/week.js';
 import { drillsView } from './views/drills.js';
 import { settingsView } from './views/settings.js';
 import { helpView } from './views/help.js';
+import { askView } from './views/ask.js';
 import { startSync } from './sync.js';
 
 const ID = '([a-z0-9]+)';
@@ -24,6 +25,7 @@ const routes = [
   [`/clients/${ID}/sessions/${ID}`, sessionFormView, 'clients'],
   [`/clients/${ID}/plan(?:/${DATE})?`, planView, 'clients'],
   [`/clients/${ID}/recap`, recapView, 'clients'],
+  [`/clients/${ID}/ask`, askView, 'clients'],
   [`/clients/${ID}`, clientView, 'clients'],
   [`/week(?:/${DATE})?`, weekView, 'week'],
   [`/drills`, drillsView, 'drills'],

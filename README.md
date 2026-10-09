@@ -45,6 +45,18 @@ copy contains only code. Client data lives on his devices and in his Supabase ac
 **Laptop:** open the same URL in a browser and sign in under Settings → Sync. Both devices stay current:
 changes show up on the other device within seconds when both are online, and catch up after being offline.
 
+## Ask Spotter (`js/ask.js`, `supabase/functions/ask/`)
+
+An in-app assistant for one client at a time. The app builds a brief (profile, injuries, levels, ratings,
+recent sessions, loads, this week's plan, the whole drill library — never private notes) and a Supabase Edge
+Function forwards it to Claude with the API key that lives server-side. Model: `claude-haiku-4-5`, about a
+cent a question, capped at 40 questions a day per account.
+
+Anything it proposes is validated client-side before it can reach a plan: drills must exist in the library
+and sit at or below that client's level. Suggested new drills are only added when the coach taps to add them.
+
+Setup is in `CLAUDE.md` → Ask Spotter.
+
 ## Sync
 
 Supabase project `bzrsalvbtbpyvdvsmckh`, database set up once from [`supabase/schema.sql`](supabase/schema.sql)

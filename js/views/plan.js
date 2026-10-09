@@ -44,6 +44,7 @@ export async function planView(clientId, week) {
       : `<a class="banner" href="#/clients/${clientId}/edit">Set ${esc(client.name)}'s level in each discipline to unlock auto-building →</a>`}
       <div class="row gap wrap">
         <button class="btn primary" data-auto ${cycle.theme ? '' : 'disabled'}>⚡ Auto-build</button>
+        <a class="btn ghost" href="#/clients/${clientId}/ask">💬 Ask Spotter</a>
         ${lastWeek ? '<button class="btn ghost" data-copy>Copy last week</button>' : ''}
         <button class="btn ghost" data-clear>Clear</button>
       </div>

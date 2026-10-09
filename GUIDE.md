@@ -158,6 +158,32 @@ adjust. Your own accolades are records like anything else, so they can be delete
 
 ---
 
+## Ask Spotter
+
+The **💬 Ask** button on a client (also on their week plan) opens a conversation about *that client*. It
+already knows their goal, injuries, levels, ratings, recent sessions, current loads and this week's plan —
+and your whole drill library — so answers come back in your drills, not generic internet programming.
+
+Things worth asking:
+
+- *"They have knee valgus and posture issues — how should I program around it?"*
+- *"Build next week for this client"*
+- *"What should we work on next, and why?"*
+- *"Make this week easier, they're beat up"*
+
+**When it proposes a week** you get a preview, not a surprise. Anything it suggested that isn't in your
+library, or that's above that client's level, is listed and left out — it cannot invent drills or sneak
+advanced work to a beginner. **Apply to this week** drops it into the plan (with Undo), or **Add to what's
+there** keeps what you already had. If it genuinely needs a drill you don't have, it suggests one with a
+reason, and it only joins your library when you tap **+ Add to library**.
+
+**What it never sees:** your private coach notes. Everything else about that client, it uses.
+
+**Limits:** it needs a connection and you signed in. There's a cap of 40 questions a day, and the footer
+shows how many you've used.
+
+---
+
 ## Recaps
 
 Pick a date range (last 7 / 14 / 30 days, or since the last recap) and Spotter drafts the email:
@@ -274,6 +300,7 @@ Most surprises make sense once you know these:
 | **Copy and paste a day** | Build a session once and reuse it — another day, another week, another client. Doses and planned weights come with it |
 | **Auto-build rebuilt around a core** | Each block now teaches 2 core drills and a core lift for all four weeks, with dose and weight climbing. Only the slots around them rotate, and the plan explains itself |
 | **Recaps in coach language** | Each rating category has its own phrasing ("your shots are getting quicker" rather than "your takedowns are looking sharp"), varied day to day, and PRs that say how big the jump was |
+| **Ask Spotter** | Ask about a client and get an answer built on their history and your drill library; it can propose a week you review and apply in a tap |
 | **Accolades and milestones** | Session counts, PRs, streaks and anniversaries appear on their own; you add the ones only you know about. They show on the profile, Progress tab, timeline and recaps |
 | **Delete from the timeline** | Any card can be removed, with Undo. Deleting a session also removes its ratings and weights from the charts |
 
@@ -292,6 +319,10 @@ timeline or the week plan.
 **A drill I deleted came back.**
 That happens when another device still had it and hadn't synced yet. Delete it once both devices are signed
 in and it stays gone.
+
+**Can Ask Spotter make up a drill and put it in my plan?**
+No. A proposed week is checked against your library before you see it; anything invented is listed and left
+out. New drills only ever arrive if you tap "Add to library".
 
 **Why does the same drill keep showing up every week?**
 That's the point — it's a **★ core drill** for this 4-week block. The same drills are taught through Learn,

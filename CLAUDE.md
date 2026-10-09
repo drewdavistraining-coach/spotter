@@ -120,6 +120,19 @@ npm test          # or: node --test "tests/**/*.test.mjs"
 - **Testing against the live project** writes to Drew's real account. Name test records clearly and delete
   them afterwards.
 
+## Ask Spotter (`js/ask.js`, `js/views/ask.js`, `supabase/functions/ask/index.ts`)
+
+- **The key never ships.** The app calls the `ask` Edge Function with the user's Supabase token; the function
+  holds `ANTHROPIC_API_KEY` as a secret, counts the question against a daily cap (`supabase/ask.sql` →
+  `bump_ask_usage`), then calls Claude. Model `claude-haiku-4-5`, overridable with the `ASK_MODEL` secret.
+- **The app owns the prompt**, not the function: `SYSTEM_PROMPT` and `clientBrief()` live in `js/ask.js`, so
+  wording changes ship with a normal push and need no redeploy.
+- **Private coach notes are never put in the brief.** There's a test for it; keep it that way.
+- **Never trust the model's output.** `extractProposal()` parses tolerantly and `validateProposal()` drops
+  drills that aren't in the library or sit above the client's level, reporting both to the coach. New drills
+  are suggestions until he taps to add them. Any new field the model returns needs validation here first.
+- One-time setup: run `supabase/ask.sql`, deploy the function, set `ANTHROPIC_API_KEY`.
+
 ## Decisions already made (Sep 2026)
 
 - iPhone first, laptop second. On-device storage that syncs through Supabase, plus an optional backup file.

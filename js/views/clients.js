@@ -220,6 +220,7 @@ export async function clientView(id, query) {
         <a class="action" href="#/clients/${id}/plan"><span>🗓</span>Week plan</a>
         <a class="action" href="#/clients/${id}/recap"><span>✉️</span>Recap</a>
         <button class="action" data-award><span>🏆</span>Accolade</button>
+        <a class="action" href="#/clients/${id}/ask"><span>💬</span>Ask</a>
       </div>
       <div class="tabs">
         <a href="#/clients/${id}?tab=timeline" class="${tab === 'timeline' ? 'on' : ''}">Timeline</a>

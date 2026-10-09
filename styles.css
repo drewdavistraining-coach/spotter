@@ -348,6 +348,16 @@ body.dragging-block { user-select: none; -webkit-user-select: none; cursor: grab
 .help th { color: var(--muted); font-weight: 600; white-space: nowrap; }
 .help td:first-child { min-width: 9rem; }
 
+/* Ask Spotter */
+.ask-thread { display: flex; flex-direction: column; gap: 10px; }
+.ask-turn { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.ask-turn.mine { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); align-self: flex-end; max-width: 85%; }
+.ask-turn.thinking { color: var(--muted); }
+.ask-text { white-space: pre-wrap; }
+.dots::after { content: '…'; animation: dots 1.2s steps(4, end) infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '…'; } }
+.proposal { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+
 /* Sheets */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease; }
 .sheet {

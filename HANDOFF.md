@@ -128,6 +128,8 @@ See `README.md` for the full file map and how the weekly program engine works. T
 most likely want to change:
 
 | To change… | Look in |
+| How Ask Spotter answers (its instructions) | `SYSTEM_PROMPT` in `js/ask.js` |
+| What Ask Spotter knows about a client | `clientBrief()` in `js/ask.js` |
 |---|---|
 | Which skills get rated, the disciplines, the starter drills | `js/seed.js` (existing drills: edit in the app's Drills tab) |
 | What a training day looks like (warm-up → focus → …) | `slotsFor()` in `js/planner.js` |
