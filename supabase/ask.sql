@@ -48,5 +48,8 @@ begin
   return query select true, current_count, p_limit;
 end $$;
 
+-- Supabase grants new functions to every role by default, so revoke the anonymous one explicitly:
+-- without this, a stranger can invoke it (it fails harmlessly, but it shouldn't be reachable).
 revoke all on function public.bump_ask_usage(integer) from public;
+revoke all on function public.bump_ask_usage(integer) from anon;
 grant execute on function public.bump_ask_usage(integer) to authenticated;
