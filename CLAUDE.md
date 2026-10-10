@@ -133,6 +133,26 @@ npm test          # or: node --test "tests/**/*.test.mjs"
   are suggestions until he taps to add them. Any new field the model returns needs validation here first.
 - One-time setup: run `supabase/ask.sql`, deploy the function, set `ANTHROPIC_API_KEY`.
 
+### Ask Spotter setup status (Oct 2026)
+
+Done: `supabase/ask.sql` has been run in the project (the `ask_usage` table and `bump_ask_usage` exist and
+were verified from outside). The app side is live on the site.
+
+Outstanding, all in Drew's hands — Ask Spotter answers nothing until these are done:
+
+1. `revoke all on function public.bump_ask_usage(integer) from anon;` in the SQL Editor (hardening; the rest
+   of ask.sql is already applied).
+2. Deploy the `ask` Edge Function (paste `supabase/functions/ask/index.ts`), leaving Verify JWT on.
+3. Add the `ANTHROPIC_API_KEY` secret, from a key made in a dedicated **Spotter workspace** with a spend
+   limit. The account needs a little credit.
+
+When they're done, the first real question should be checked end to end: the answer, a proposed week, and
+`usage` in the response for actual token cost.
+
+**Key hygiene** (agreed with the user): the key goes from the Anthropic console straight into the Supabase
+secret and exists nowhere else. Never ask for it, never accept it pasted into a chat, never write it to a
+file. If it leaks, revoking it in the console is the whole fix.
+
 ## Decisions already made (Sep 2026)
 
 - iPhone first, laptop second. On-device storage that syncs through Supabase, plus an optional backup file.

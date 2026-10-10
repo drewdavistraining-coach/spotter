@@ -105,6 +105,30 @@ is untouched (unless a change deleted it, which is why rule 3 exists).
 
 ---
 
+## Part 2b: Ask Spotter's one-time setup
+
+Ask Spotter is the only part of the app that costs money to run, and the only part that needs setting up
+outside the app. Until these are done, the Ask screen loads and tells you what's missing.
+
+1. **Get an Anthropic API key** at console.anthropic.com. Make a **workspace** called Spotter first and
+   create the key inside it, then set a spend limit on that workspace (~$5/month). Add a little credit.
+2. **In Supabase → SQL Editor**, run `supabase/ask.sql` from this repo (already done once), plus:
+   `revoke all on function public.bump_ask_usage(integer) from anon;`
+3. **In Supabase → Edge Functions**, deploy a function named exactly `ask` with the contents of
+   `supabase/functions/ask/index.ts`. Leave "Verify JWT" on — that's what stops strangers calling it.
+4. **In Supabase → Edge Functions → Secrets**, add `ANTHROPIC_API_KEY` with the key from step 1.
+
+**Never email, text or paste that key anywhere else.** It goes from the Anthropic console into the Supabase
+secret and lives nowhere else. If it ever leaks: revoke it in the console, make a new one, paste it into the
+secret. Nothing in the app or the code changes.
+
+Two optional secrets: `ASK_MODEL` (defaults to `claude-haiku-4-5`; set `claude-sonnet-5-5` if the answers
+feel thin, at roughly double the cost) and `ASK_DAILY_LIMIT` (defaults to 40 questions a day).
+
+**Costs:** about a cent a question on Haiku. Forty questions in a day would be about 40 cents.
+
+---
+
 ## Part 3: looking after your data
 
 - **Sync:** sign in once on each device under Settings → Sync. Phone and laptop then stay matched.
